@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import { 
   getBalance, getMonthlyIncome, getMonthlyExpense, getTransactions, 
   getCategories, getUser, getSettings, formatRupiah, formatDate, getBudgets,
-  getBocorHalusInsights, getAchievements, getTasks, getEmergencyFund, getUserLevel, getStreak, predictCashFlow, getUnreadNotifCount,
+  getBocorHalusInsights, getAchievements, getTasks, getEmergencyFunds, getUserLevel, getStreak, predictCashFlow, getUnreadNotifCount,
   getCashWalletBalance, getBankAccounts, getBankAvailableBalance, getTotalLocked, getAssets,
-  type CashFlowPrediction, type KanbanTask
+  type CashFlowPrediction, type KanbanTask, type EmergencyFund, type Transaction
 } from "../store/database";
 import { useLang, t } from "../i18n";
 
@@ -32,7 +32,8 @@ export default function HomePage() {
   const [assetsTotal, setAssetsTotal] = useState(0);
   const [monthIn, setMonthIn] = useState(0);
   const [monthOut, setMonthOut] = useState(0);
-  const [recentTx, setRecentTx] = useState<any[]>([]);
+  const [recentTx, setRecentTx] = useState<Transaction[]>([]);
+  const [selectedRecentTx, setSelectedRecentTx] = useState<Transaction | null>(null);
   const [categoryEmojiMap, setCategoryEmojiMap] = useState<Record<string, string>>({});
   const [userName, setUserName] = useState("");
   const [showBalance, setShowBalance] = useState(true);
@@ -43,7 +44,7 @@ export default function HomePage() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [scrollPos, setScrollPos] = useState(0);
   const [recentTasks, setRecentTasks] = useState<KanbanTask[]>([]);
-  const [emergencyFund, setEmergencyFund] = useState<ReturnType<typeof getEmergencyFund> | null>(null);
+  const [emergencyFunds, setEmergencyFunds] = useState<EmergencyFund[]>([]);
   const [userLevel, setUserLevel] = useState<ReturnType<typeof getUserLevel>>({ level: 1, currentExp: 0, totalExp: 0, title: "Pemula" });
   const [streak, setStreak] = useState<ReturnType<typeof getStreak>>({ current: 0, longest: 0, lastDate: null });
   const [guardianPrediction, setGuardianPrediction] = useState<CashFlowPrediction | null>(null);
@@ -111,7 +112,10 @@ export default function HomePage() {
       const activeTasks = getTasks().filter(t => t.status !== "done");
       setRecentTasks(activeTasks.slice(0, 3));
       // Emergency fund
-      setEmergencyFund(getEmergencyFund());
+      const ef = getEmergencyFunds()
+        .slice()
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      setEmergencyFunds(ef.slice(0, 3)); // max 3 terbaru
       // Level & Streak
       setUserLevel(getUserLevel());
       setStreak(getStreak());
@@ -267,11 +271,11 @@ export default function HomePage() {
                       {showBalance ? formatRupiah(bankAvailableTotal) : "Rp••••"}
                     </p>
                   </div>
-                  {emergencyFund && emergencyFund.isActive && (
+                  {emergencyFunds[0] && emergencyFunds[0].isActive && (
                     <div className="bg-[rgba(239,68,68,0.1)] rounded-[14px] px-4 py-2">
                       <p className="font-['Inter'] text-[9px] text-[rgba(239,68,68,0.6)]">{L("Dana Darurat", "Emergency Fund")}</p>
                       <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#ef4444]">
-                        {showBalance ? formatRupiah(emergencyFund.savedAmount) : "Rp••••"}
+                        {showBalance ? formatRupiah(emergencyFunds[0].savedAmount) : "Rp••••"}
                       </p>
                     </div>
                   )}
@@ -365,55 +369,6 @@ export default function HomePage() {
            </div>
         )}
 
-        {emergencyFund && emergencyFund.targetAmount > 0 && (
-          <div className="px-5 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase"
-                style={{ color: "var(--app-text2)" }}>
-                {L("Dana Darurat", "Emergency Fund")}
-              </p>
-              <button onClick={() => navigate("/app/emergency-funds")} className="text-[#ef4444] text-[11px] font-bold clickable">
-                {L("Lihat →", "See →")}
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate(`/app/emergency-funds/${emergencyFund.id}`)}
-              className="w-full text-left rounded-[20px] p-4 border transition-all hover:shadow-[0_8px_24px_rgba(239,68,68,0.15)] active:scale-[0.99]"
-              style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-full bg-[#ef4444]/10 flex items-center justify-center">
-                    <span className="text-[20px]">🚨</span>
-                  </div>
-                  <div>
-                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[14px]" style={{ color: "var(--app-text)" }}>
-                      {formatRupiah(emergencyFund.savedAmount)}
-                    </p>
-                    <p className="text-[10px]" style={{ color: "var(--app-text2)" }}>
-                      {L("dari", "of")} {formatRupiah(emergencyFund.targetAmount)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-[16px]" style={{ color: emergencyFund.savedAmount >= emergencyFund.targetAmount ? "#4edea3" : "#ef4444" }}>
-                    {Math.min(100, Math.round((emergencyFund.savedAmount / emergencyFund.targetAmount) * 100))}%
-                  </p>
-                </div>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--app-card2)" }}>
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(100, (emergencyFund.savedAmount / emergencyFund.targetAmount) * 100)}%`,
-                    background: emergencyFund.savedAmount >= emergencyFund.targetAmount 
-                      ? "linear-gradient(90deg,#4edea3,#04b4a2)" 
-                      : "linear-gradient(90deg,#ef4444,#fca5a5)",
-                  }} />
-              </div>
-            </button>
-          </div>
-        )}
-
         <div className="px-5 mb-8">
           <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase mb-4"
             style={{ color: "var(--app-text2)" }}>{t("services", lang)}</p>
@@ -432,6 +387,118 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+
+        {emergencyFunds.length > 0 && emergencyFunds.some(f => f.targetAmount > 0) && (
+          <div className="px-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase"
+                style={{ color: "var(--app-text2)" }}>
+                {L("Dana Darurat", "Emergency Fund")}
+              </p>
+              <button onClick={() => navigate("/app/emergency-funds")} className="text-[#ef4444] text-[11px] font-bold clickable">
+                {L("Lihat →", "See →")}
+              </button>
+            </div>
+            <div className="space-y-3">
+              {emergencyFunds.map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => navigate(`/app/emergency-funds/${f.id}`)}
+                  className="w-full text-left rounded-[20px] p-4 border transition-all hover:shadow-[0_8px_24px_rgba(239,68,68,0.15)] active:scale-[0.99]"
+                  style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-full bg-[#ef4444]/10 flex items-center justify-center">
+                        <span className="text-[20px]">🚨</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-['Plus_Jakarta_Sans'] font-extrabold text-[13px] truncate" style={{ color: "var(--app-text)" }}>
+                          {f.name}
+                        </p>
+                        <p className="font-['Plus_Jakarta_Sans'] font-bold text-[14px]" style={{ color: "var(--app-text)" }}>
+                          {formatRupiah(f.savedAmount)}
+                        </p>
+                        <p className="text-[10px]" style={{ color: "var(--app-text2)" }}>
+                          {L("dari", "of")} {formatRupiah(f.targetAmount)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-[16px]" style={{ color: f.savedAmount >= f.targetAmount ? "#4edea3" : "#ef4444" }}>
+                        {f.targetAmount > 0 ? Math.min(100, Math.round((f.savedAmount / f.targetAmount) * 100)) : 0}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--app-card2)" }}>
+                    <div className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${f.targetAmount > 0 ? Math.min(100, (f.savedAmount / f.targetAmount) * 100) : 0}%`,
+                        background: f.savedAmount >= f.targetAmount
+                          ? "linear-gradient(90deg,#4edea3,#04b4a2)"
+                          : "linear-gradient(90deg,#ef4444,#fca5a5)",
+                      }} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tasks reminder (max 3) */}
+        {recentTasks.length > 0 && (
+          <div className="px-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase"
+                style={{ color: "var(--app-text2)" }}>
+                {L("Tugas", "Tasks")}
+              </p>
+              <button onClick={() => navigate("/app/tasks")} className="text-[#4edea3] text-[11px] font-bold clickable">
+                {L("Lihat detail →", "See details →")}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {recentTasks.slice(0, 3).map((task, i) => (
+                <div key={task.id}
+                  style={{ animation: `taskSlideIn 0.5s cubic-bezier(0.2,0.8,0.2,1) both`, animationDelay: `${i * 60}ms` }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/app/tasks?task=${task.id}`)}
+                    className="w-full text-left rounded-[20px] p-4 border transition-all duration-200 hover:shadow-[0_8px_24px_rgba(96,165,250,0.12)] hover:-translate-y-0.5 active:scale-[0.98]"
+                    style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="size-[40px] rounded-full flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: "rgba(96,165,250,0.12)" }}>
+                          <span className="text-[18px]">🗂️</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-['Plus_Jakarta_Sans'] font-extrabold text-[14px] truncate"
+                            style={{ color: "var(--app-text)" }}>
+                            {task.title}
+                          </p>
+                          <p className="font-['Inter'] text-[11px] mt-0.5"
+                            style={{ color: "var(--app-text2)" }}>
+                            {task.dueDate ? `${L("Jatuh tempo", "Due")}: ${formatDate(task.dueDate)}` : L("Tanpa jatuh tempo", "No due date")}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full shrink-0"
+                        style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--app-text2)" }}>
+                        {task.status}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              ))}
+              <button onClick={() => navigate("/app/tasks")}
+                className="w-full py-3 text-center text-[11px] font-bold text-[#4edea3] border border-dashed border-[#4edea340] rounded-xl">
+                {L("Lihat semua tugas →", "View all tasks →")}
+              </button>
+            </div>
+          </div>
+        )}
 
         {allBudgets.length > 0 && (
           <div className="px-5 mb-8">
@@ -500,7 +567,10 @@ export default function HomePage() {
               {recentTx.slice(0, 3).map((tx, i) => (
                 <div key={tx.id}
                   style={{ animation: `taskSlideIn 0.5s cubic-bezier(0.2,0.8,0.2,1) both`, animationDelay: `${i * 60}ms` }}>
-                <div className="group rounded-[20px] p-4 flex items-center justify-between border transition-all duration-200 hover:shadow-[0_8px_24px_rgba(78,222,163,0.12)] hover:-translate-y-0.5 active:scale-[0.98]"
+                <button
+                  type="button"
+                  onClick={() => setSelectedRecentTx(tx)}
+                  className="w-full group rounded-[20px] p-4 flex items-center justify-between border transition-all duration-200 hover:shadow-[0_8px_24px_rgba(78,222,163,0.12)] hover:-translate-y-0.5 active:scale-[0.98]"
                   style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
                   <div className="flex items-center gap-3">
                     <div className="size-[40px] rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
@@ -510,14 +580,14 @@ export default function HomePage() {
                     <div>
                       <p className="font-['Plus_Jakarta_Sans'] font-bold text-[14px]" style={{ color: "var(--app-text)" }}>{tx.category}</p>
                       <p className="font-['Inter'] text-[11px]" style={{ color: "var(--app-text2)" }}>
-                        {formatDate(tx.date)}{tx.notes ? ` · ${tx.notes}` : ""}
+                        {formatDate(tx.date)}
                       </p>
                     </div>
                   </div>
                   <p className={`font-['Plus_Jakarta_Sans'] font-bold text-[14px] ${tx.type === "income" ? "text-[#4edea3]" : "text-[#ffb4ab]"}`}>
                     {tx.type === "income" ? "+" : "-"}{formatRupiah(tx.amount)}
                   </p>
-                </div>
+                </button>
                 </div>
               ))}
               <button onClick={() => navigate("/app/history")}
@@ -527,6 +597,96 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* Recent Transaction Detail Modal (read-only, no delete) */}
+        {selectedRecentTx && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setSelectedRecentTx(null)}
+          >
+            <div
+              className="w-full max-w-[400px] mb-4 rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+              style={{ backgroundColor: "var(--app-card)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="relative px-6 pt-8 pb-6 flex flex-col items-center text-center overflow-hidden"
+                style={{
+                  background: selectedRecentTx.type === "income"
+                    ? "linear-gradient(160deg,rgba(78,222,163,0.18) 0%,transparent 70%)"
+                    : "linear-gradient(160deg,rgba(255,180,171,0.18) 0%,transparent 70%)",
+                }}>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-40 rounded-full blur-[60px] pointer-events-none"
+                  style={{ backgroundColor: selectedRecentTx.type === "income" ? "rgba(78,222,163,0.2)" : "rgba(255,180,171,0.2)" }} />
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/20" />
+                <div className="relative size-[72px] rounded-[22px] flex items-center justify-center mb-4 shadow-lg"
+                  style={{
+                    backgroundColor: selectedRecentTx.type === "income" ? "rgba(78,222,163,0.15)" : "rgba(255,180,171,0.15)",
+                    border: `1.5px solid ${selectedRecentTx.type === "income" ? "rgba(78,222,163,0.3)" : "rgba(255,180,171,0.3)"}`,
+                  }}>
+                  <span className="text-[36px]">{categoryEmojiMap[selectedRecentTx.category] || "💳"}</span>
+                </div>
+                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-3"
+                  style={{
+                    backgroundColor: selectedRecentTx.type === "income" ? "rgba(78,222,163,0.15)" : "rgba(255,180,171,0.15)",
+                    color: selectedRecentTx.type === "income" ? "#4edea3" : "#ffb4ab",
+                  }}>
+                  {selectedRecentTx.type === "income" ? L("Pemasukan", "Income") : L("Pengeluaran", "Expense")}
+                </span>
+                <p className="font-['Plus_Jakarta_Sans'] font-black text-[38px] leading-none tracking-tight"
+                  style={{ color: selectedRecentTx.type === "income" ? "#4edea3" : "#ffb4ab" }}>
+                  {selectedRecentTx.type === "income" ? "+" : "-"}{formatRupiah(selectedRecentTx.amount)}
+                </p>
+              </div>
+
+              <div className="px-6 pb-2 space-y-1" style={{ borderTop: "1px solid var(--app-border)" }}>
+                <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>{L("Kategori", "Category")}</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[14px]" style={{ color: "var(--app-text)" }}>{selectedRecentTx.category}</span>
+                </div>
+
+                <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>{L("Tanggal", "Date")}</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[13px]" style={{ color: "var(--app-text)" }}>
+                    {new Date(selectedRecentTx.date).toLocaleDateString(lang === "en" ? "en-US" : "id-ID", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>{L("Waktu", "Time")}</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[13px]" style={{ color: "var(--app-text)" }}>
+                    {new Date(selectedRecentTx.date).toLocaleTimeString(lang === "en" ? "en-US" : "id-ID", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>{L("Sumber", "Source")}</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-right max-w-[220px]" style={{ color: "var(--app-text)" }}>
+                    {selectedRecentTx.paymentSource?.label ?? (selectedRecentTx.paymentSource?.type ?? "cash")}
+                  </span>
+                </div>
+
+                <div className="flex items-start justify-between py-3.5">
+                  <span className="font-['Inter'] text-[12px] shrink-0" style={{ color: "var(--app-text2)" }}>{L("Catatan", "Notes")}</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-right max-w-[200px]"
+                    style={{ color: selectedRecentTx.notes ? "var(--app-text)" : "var(--app-text2)" }}>
+                    {selectedRecentTx.notes || L("Tidak ada", "None")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="px-6 pb-6">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRecentTx(null)}
+                  className="w-full h-[48px] rounded-[16px] font-['Plus_Jakarta_Sans'] font-extrabold text-[14px] text-[#003824] active:scale-95 transition-all"
+                  style={{ background: "linear-gradient(135deg,#4edea3,#00b4a2)" }}
+                >
+                  {L("Tutup", "Close")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

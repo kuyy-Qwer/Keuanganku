@@ -7,7 +7,8 @@ import {
 } from "../../store/database";
 import { useLang } from "../../i18n";
 import ConfirmDialog from "../../components/ConfirmDialog";
-import { playDeleteSound, playSuccessSound, playAlertSound } from "../../lib/sounds";
+import { playAlertSound } from "../../lib/sounds";
+import { crudDeleteSuccess, crudSuccess } from "../../lib/notify";
 
 const EMOJI_OPTIONS = ["🍔","🚗","🛍️","📄","🎮","💊","💵","💻","📈","💰","🏠","✈️","📚","🎬","🐕","☕","🎵","👕","💡","🎁","🍕","🎨","⚽","🔧","📱","🧹"];
 
@@ -210,7 +211,7 @@ export default function CategoriesPage() {
     addCategory({ name: catName, emoji: addForm.emoji, type: addForm.type });
     if (addForm.type === "expense" || addForm.type === "both") saveBudget(catName, parseNum(addForm.budgetAmt));
     if (addForm.type === "income" || addForm.type === "both") saveInflowTarget(catName, parseNum(addForm.inflowAmt));
-    playSuccessSound();
+    void crudSuccess();
     setAddForm(defaultForm());
     setShowAddForm(false);
   };
@@ -224,7 +225,7 @@ export default function CategoriesPage() {
     updateCategory(editId, { name: catName, emoji: editForm.emoji, type: editForm.type });
     if (editForm.type === "expense" || editForm.type === "both") saveBudget(catName, parseNum(editForm.budgetAmt));
     if (editForm.type === "income" || editForm.type === "both") saveInflowTarget(catName, parseNum(editForm.inflowAmt));
-    playSuccessSound();
+    void crudSuccess();
     setEditId(null);
   };
 
@@ -273,7 +274,7 @@ export default function CategoriesPage() {
             message={L("Kategori ini akan dihapus permanen.", "This category will be permanently deleted.")}
             confirmLabel={L("Hapus", "Delete")}
             cancelLabel={L("Batal", "Cancel")}
-            onConfirm={() => { playDeleteSound(); deleteCategory(pendingDeleteId); setPendingDeleteId(null); }}
+            onConfirm={() => { void crudDeleteSuccess(); deleteCategory(pendingDeleteId); setPendingDeleteId(null); }}
             onCancel={() => setPendingDeleteId(null)}
           />
         )}

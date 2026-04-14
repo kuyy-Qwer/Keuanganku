@@ -1,12 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
-import { getTransactions, deleteTransaction, getCategories, formatNumber, formatRupiah, type Transaction } from "../store/database";
+import { getTransactions, deleteTransaction, getCategories, formatNumber, formatRupiah, getBankTransactions, getBankAccounts, type Transaction, type BankTransaction } from "../store/database";
 import { useLang, t } from "../i18n";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { playDeleteSound } from "../lib/sounds";
+import { crudDeleteSuccess } from "../lib/notify";
 
 export default function HistoryPage() {
   const lang = useLang();
   const L = (id: string, en: string) => lang === "en" ? en : id;
+
+  const findRelatedBankTx = (txId: string): BankTransaction | null => {
+    try {
+      const all = getBankTransactions();
+      const linked = all.find(b => b.relatedTransactionId === txId);
+      return linked ?? null;
+    } catch {
+      return null;
+    }
+  };
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
@@ -42,15 +52,45 @@ export default function HistoryPage() {
     return transactions.filter(tx => {
       const matchType = typeFilter === "all" || tx.type === typeFilter;
       const matchCat = categoryFilter === "all" || tx.category === categoryFilter;
-      const matchSource =
-        sourceFilter === "all" ||
-        (tx.paymentSource?.type ?? "cash") === sourceFilter;
+      const matchSource = (() => {
+        if (sourceFilter === "all") return true;
+
+        // Fund-based filters (based on what user sees in History)
+        if (sourceFilter === "emergency_fund") return tx.category === "Dana Darurat";
+        if (sourceFilter === "locked_saving") return tx.category === "Tabungan";
+        if (sourceFilter === "debt") return tx.category === "Hutang" || tx.category === "Piutang";
+        if (sourceFilter === "asset") return tx.category === "Aset";
+
+        // Payment source filters (cash/bank)
+        return (tx.paymentSource?.type ?? "cash") === sourceFilter;
+      })();
       const matchSearch = searchQuery === "" ||
         tx.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         tx.notes.toLowerCase().includes(searchQuery.toLowerCase());
       return matchType && matchCat && matchSource && matchSearch;
     });
   }, [transactions, typeFilter, categoryFilter, sourceFilter, searchQuery]);
+
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      cash: 0,
+      bank: 0,
+      emergency_fund: 0,
+      locked_saving: 0,
+      debt: 0,
+      asset: 0,
+    };
+    transactions.forEach(tx => {
+      const ps = tx.paymentSource?.type ?? "cash";
+      if (ps === "cash") counts.cash += 1;
+      if (ps === "bank") counts.bank += 1;
+      if (tx.category === "Dana Darurat") counts.emergency_fund += 1;
+      if (tx.category === "Tabungan") counts.locked_saving += 1;
+      if (tx.category === "Hutang" || tx.category === "Piutang") counts.debt += 1;
+      if (tx.category === "Aset") counts.asset += 1;
+    });
+    return counts;
+  }, [transactions]);
 
   const totalIncome  = useMemo(() => filtered.filter(tx => tx.type === "income").reduce((s, tx) => s + tx.amount, 0), [filtered]);
   const totalExpense = useMemo(() => filtered.filter(tx => tx.type === "expense").reduce((s, tx) => s + tx.amount, 0), [filtered]);
@@ -76,8 +116,8 @@ export default function HistoryPage() {
   const confirmDelete = (id: string) => setPendingDeleteId(id);
   const handleDelete = () => {
     if (!pendingDeleteId) return;
-    playDeleteSound();
     deleteTransaction(pendingDeleteId);
+    void crudDeleteSuccess();
     setPendingDeleteId(null);
     setSelectedTx(null);
   };
@@ -178,13 +218,21 @@ export default function HistoryPage() {
             className="h-[38px] px-3 rounded-full text-[11px] font-bold outline-none border shrink-0"
             style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)", color: "var(--app-text2)" }}
           >
-            <option value="all">{L("Semua Dana", "All Sources")}</option>
-            <option value="cash">💵 Cash</option>
-            <option value="bank">🏦 Bank</option>
-            <option value="emergency_fund">🚨 Dana Darurat</option>
-            <option value="locked_saving">🎯 Tabungan</option>
-            <option value="debt">🧾 Hutang</option>
-            <option value="asset">🏷️ Aset</option>
+            <option value="all">{L("Semua", "All")}</option>
+            {(sourceCounts.cash > 0 || sourceCounts.bank > 0) && (
+              <optgroup label={L("Metode Pembayaran", "Payment Method")}>
+                {sourceCounts.cash > 0 && <option value="cash">💵 {L("Cash", "Cash")}</option>}
+                {sourceCounts.bank > 0 && <option value="bank">🏦 {L("Bank", "Bank")}</option>}
+              </optgroup>
+            )}
+            {(sourceCounts.emergency_fund > 0 || sourceCounts.locked_saving > 0 || sourceCounts.debt > 0 || sourceCounts.asset > 0) && (
+              <optgroup label={L("Kategori Dana / Fitur", "Fund Category / Feature")}>
+                {sourceCounts.emergency_fund > 0 && <option value="emergency_fund">🚨 {L("Dana Darurat", "Emergency Fund")}</option>}
+                {sourceCounts.locked_saving > 0 && <option value="locked_saving">🎯 {L("Tabungan", "Savings")}</option>}
+                {sourceCounts.debt > 0 && <option value="debt">🧾 {L("Hutang/Piutang", "Debt/Loan")}</option>}
+                {sourceCounts.asset > 0 && <option value="asset">🏷️ {L("Aset", "Assets")}</option>}
+              </optgroup>
+            )}
           </select>
 
           {/* Kategori filter button */}
@@ -316,6 +364,16 @@ export default function HistoryPage() {
             className="w-full max-w-[400px] mb-4 rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
             style={{ backgroundColor: "var(--app-card)" }}
             onClick={e => e.stopPropagation()}>
+            {/*
+              Bank metadata (admin fee, transfer details, receipt image) lives in BankTransaction.
+              We link it via relatedTransactionId.
+            */}
+            {(() => {
+              const bankMeta = findRelatedBankTx(selectedTx.id);
+              const bankAcc = bankMeta ? getBankAccounts().find(a => a.id === bankMeta.bankAccountId) : null;
+              const toAcc = bankMeta?.transferToAccountId ? getBankAccounts().find(a => a.id === bankMeta.transferToAccountId) : null;
+              return (
+                <>
 
             {/* Hero section */}
             <div className="relative px-6 pt-8 pb-6 flex flex-col items-center text-center overflow-hidden"
@@ -358,6 +416,65 @@ export default function HistoryPage() {
 
             {/* Detail rows */}
             <div className="px-6 pb-2 space-y-1" style={{ borderTop: "1px solid var(--app-border)" }}>
+              {/* Payment Source */}
+              <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>
+                  {L("Sumber Dana", "Payment Source")}
+                </span>
+                <span className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-right max-w-[220px]"
+                  style={{ color: "var(--app-text)" }}>
+                  {selectedTx.paymentSource
+                    ? `${selectedTx.paymentSource.type === "cash" ? "💵" :
+                      selectedTx.paymentSource.type === "bank" ? "🏦" :
+                      selectedTx.paymentSource.type === "debt" ? "🧾" :
+                      selectedTx.paymentSource.type === "asset" ? "📦" :
+                      selectedTx.paymentSource.type === "emergency_fund" ? "🚨" :
+                      selectedTx.paymentSource.type === "locked_saving" ? "🎯" :
+                      "💳"} ${selectedTx.paymentSource.label ?? selectedTx.paymentSource.type}`
+                    : L("Tidak diketahui", "Unknown")}
+                </span>
+              </div>
+
+              {/* Bank fee */}
+              {bankMeta && bankMeta.adminFee > 0 && (
+                <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>
+                    {L("Biaya Admin", "Admin Fee")}
+                  </span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[13px]" style={{ color: "#fbbf24" }}>
+                    {formatRupiah(bankMeta.adminFee)}
+                  </span>
+                </div>
+              )}
+
+              {/* Transfer details */}
+              {bankMeta && (bankMeta.type === "transfer_out" || bankMeta.transferToName || bankMeta.transferToAccountId) && (
+                <div className="py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <p className="font-['Inter'] text-[12px] mb-2" style={{ color: "var(--app-text2)" }}>
+                    {L("Detail Transfer", "Transfer Details")}
+                  </p>
+                  <div className="rounded-[14px] p-3 space-y-1.5"
+                    style={{ backgroundColor: "var(--app-card2)", border: "1px solid var(--app-border)" }}>
+                    <p className="text-[12px] font-bold" style={{ color: "var(--app-text)" }}>
+                      {bankAcc ? `🏦 ${bankAcc.bankName}` : "🏦 Bank"}
+                      {" "}→{" "}
+                      {toAcc ? `🏦 ${toAcc.bankName}` : bankMeta.transferToBank ? `🏦 ${bankMeta.transferToBank}` : L("Tujuan", "Destination")}
+                    </p>
+                    {(bankMeta.transferToName || bankMeta.transferToNumber) && (
+                      <p className="text-[11px]" style={{ color: "var(--app-text2)" }}>
+                        {(bankMeta.transferToName ?? "").trim()}
+                        {bankMeta.transferToNumber ? ` · ${bankMeta.transferToNumber}` : ""}
+                      </p>
+                    )}
+                    {bankMeta.adminFee > 0 && (
+                      <p className="text-[11px]" style={{ color: "var(--app-text2)" }}>
+                        {L("Admin", "Fee")}: {formatRupiah(bankMeta.adminFee)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Category */}
               <div className="flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
                 <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>
@@ -406,6 +523,37 @@ export default function HistoryPage() {
                 </span>
               </div>
 
+              {/* Receipt / Proof */}
+              {(selectedTx.receipt?.imageDataUrl || selectedTx.receipt?.rawCode || bankMeta?.receiptImageUrl) && (
+                <div className="py-3.5" style={{ borderBottom: "1px solid var(--app-border)" }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>
+                      {L("Bukti / Struk", "Receipt / Proof")}
+                    </span>
+                    {selectedTx.receipt?.codeType && (
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full"
+                        style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--app-text2)" }}>
+                        {selectedTx.receipt.codeType}
+                      </span>
+                    )}
+                  </div>
+                  {selectedTx.receipt?.rawCode && (
+                    <div className="text-[11px] font-mono rounded-[12px] p-3 mb-2"
+                      style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text2)", border: "1px solid var(--app-border)" }}>
+                      {selectedTx.receipt.rawCode}
+                    </div>
+                  )}
+                  {(selectedTx.receipt?.imageDataUrl || bankMeta?.receiptImageUrl) && (
+                    <img
+                      src={selectedTx.receipt?.imageDataUrl ?? bankMeta?.receiptImageUrl}
+                      alt="receipt"
+                      className="w-full rounded-[16px] object-cover max-h-[220px] border"
+                      style={{ borderColor: "var(--app-border)" }}
+                    />
+                  )}
+                </div>
+              )}
+
               {/* Transaction ID */}
               <div className="flex items-center justify-between py-3.5">
                 <span className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>
@@ -417,6 +565,9 @@ export default function HistoryPage() {
               </div>
             </div>
 
+                </>
+              );
+            })()}
             {/* Actions */}
             <div className="px-6 pb-6 pt-3 flex gap-3">
               <button

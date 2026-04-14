@@ -54,6 +54,10 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
   const [receiptImage, setReceiptImage] = useState<string | undefined>();
   const [belanjaSubMode, setBelanjaSubMode] = useState<"none" | "offline" | "online">("none");
   const [showMarketplace, setShowMarketplace] = useState(false);
+  const [storeName, setStoreName] = useState("");
+
+  const selectedCategoryNorm = selectedCategory.trim();
+  const isBelanjaBase = selectedCategoryNorm.toLowerCase() === "belanja";
   const fileRef = useRef<HTMLInputElement>(null);
 
   const getCategoryEmoji = (catName: string): string => {
@@ -100,12 +104,19 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
       setError("Nominal minimal Rp 1.000");
       return;
     }
+    const scannedAt = new Date().toISOString();
     const tx = addTransaction({
       amount: barcodeSubtotal,
       category: selectedCategory,
       notes: notes + (validItems.length > 1 ? ` (${validItems.length} items scanned)` : ""),
       type: "expense",
       paymentSource: { type: "cash", label: "Cash" },
+      receipt: {
+        rawCode: validItems.map(i => i.name.trim()).filter(Boolean).join(" · "),
+        codeType: "barcode",
+        scannedAt,
+        imageDataUrl: receiptImage,
+      },
     });
     // barcode flow default: cash wallet
     addCashWalletTransaction({
@@ -122,6 +133,19 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
   };
 
   useEffect(() => { setCategories(getCategories()); }, []);
+
+
+  // Reset belanja helper fields when leaving belanja context
+  useEffect(() => {
+    const inBelanjaFlow =
+      selectedCategoryNorm === "Belanja" ||
+      selectedCategoryNorm === "Belanja Offline" ||
+      belanjaSubMode !== "none" ||
+      showMarketplace;
+    if (!inBelanjaFlow) {
+      if (storeName) setStoreName("");
+    }
+  }, [selectedCategoryNorm, belanjaSubMode, showMarketplace, storeName]);
 
   useEffect(() => {
     const handleClickOutside = () => setShowCatDropdown(false);
@@ -179,7 +203,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
   const formatDisplay = () => { const n = parseFloat(display); if (isNaN(n)) return "0"; if (display.endsWith(".")) return display; return n.toLocaleString("id-ID").replace(/,/g, "."); };
   const formatRupiahInput = (val: string) => { const n = parseFloat(val); if (isNaN(n)) return "0"; return n.toLocaleString("id-ID").replace(/,/g, "."); };
 
-  const isTransferCategory = selectedCategory.toLowerCase() === "transfer";
+  const isTransferCategory = selectedCategoryNorm.toLowerCase() === "transfer";
   const sourceBank = bankAccounts.find(a => a.id === paymentSource) ?? null;
   const adminFeeNum = parseInt(adminFee.replace(/\D/g, ""), 10) || 0;
   const isBankSource = paymentSource !== "cash" && !!sourceBank;
@@ -271,16 +295,35 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
       }
     }
 
+    // Auto-append store name for Belanja Offline
+    const finalNotes = (() => {
+      if (selectedCategoryNorm === "Belanja Offline" && storeName.trim()) {
+        return [storeName.trim(), notes].filter(Boolean).join(" · ");
+      }
+      return notes;
+    })();
+
     // Simpan ke transaksi utama
+    const scannedAt = new Date().toISOString();
     const tx = addTransaction({
       amount,
-      category: selectedCategory,
-      notes,
+      category: selectedCategoryNorm,
+      notes: finalNotes,
       type: txType,
       paymentSource: isBankSource ? { type: "bank", id: sourceBank!.id, label: sourceBank!.bankName }
         : isDebtSource ? { type: "debt", id: selectedDebtId, label: debtsOptions.find(d => d.id === selectedDebtId)?.personName }
         : isAssetSource ? { type: "asset", id: selectedAssetId, label: assetsOptions.find(a => a.id === selectedAssetId)?.name }
         : { type: "cash", label: "Cash" },
+      ...(receiptImage
+        ? {
+          receipt: {
+            rawCode: "",
+            codeType: "manual",
+            scannedAt,
+            imageDataUrl: receiptImage,
+          },
+        }
+        : {}),
     });
 
     // Jika pakai bank → update saldo bank
@@ -303,10 +346,11 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
         type: isTransferCategory ? "transfer_out" : txType === "income" ? "credit" : "debit",
         amount,
         adminFee: adminFeeNum,
-        category: selectedCategory,
-        notes,
+        category: selectedCategoryNorm,
+        notes: finalNotes,
         paymentMethod: sourceBank.id,
         receiptImageUrl: receiptImage,
+        relatedTransactionId: tx.id,
         transferToAccountId: isTransferCategory && transferMode === "own_bank" ? transferToAccountId : undefined,
         transferToContactId,
         transferToName: toName || undefined,
@@ -321,8 +365,8 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
       addCashWalletTransaction({
         type: txType === "income" ? "in" : "out",
         amount,
-        category: selectedCategory,
-        notes,
+        category: selectedCategoryNorm,
+        notes: finalNotes,
         date: new Date().toISOString(),
         relatedTransactionId: tx.id,
       });
@@ -413,7 +457,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
           </div>
 
           {/* Categories - Dropdown - Hidden when calculator is expanded */}
-          {!showCalculator && selectedCategory !== "Belanja" && belanjaSubMode === "none" && !showMarketplace && (
+          {!showCalculator && !isBelanjaBase && belanjaSubMode === "none" && !showMarketplace && (
           <div className="mb-5">
             <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-3">PILIH KATEGORI</p>
             <div className="relative">
@@ -421,13 +465,13 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
                 type="button"
                 onClick={() => setShowCatDropdown(!showCatDropdown)}
                 className="w-full h-[48px] px-4 rounded-[12px] flex items-center justify-between text-[13px] font-['Inter']"
-                style={{ backgroundColor: "var(--app-card2)", border: "1px solid var(--app-border)", color: selectedCategory ? "var(--app-text)" : "var(--app-text2)" }}
+                style={{ backgroundColor: "var(--app-card2)", border: "1px solid var(--app-border)", color: selectedCategoryNorm ? "var(--app-text)" : "var(--app-text2)" }}
               >
                 <span className="flex items-center gap-2">
-                  {selectedCategory ? (
+                  {selectedCategoryNorm ? (
                     <>
-                      <span>{filteredCats.find(c => c.name === selectedCategory)?.emoji || getCategoryEmoji(selectedCategory)}</span>
-                      <span>{selectedCategory}</span>
+                      <span>{filteredCats.find(c => c.name === selectedCategoryNorm)?.emoji || getCategoryEmoji(selectedCategoryNorm)}</span>
+                      <span>{selectedCategoryNorm}</span>
                     </>
                   ) : (
                     "Pilih kategori..."
@@ -473,25 +517,25 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
                             return;
                           }
                           e.stopPropagation(); 
-                          if (cat.name === "Belanja") {
-                            setSelectedCategory(cat.name);
+                          if (cat.name.trim().toLowerCase() === "belanja") {
+                            setSelectedCategory(cat.name.trim());
                             setShowCatDropdown(false);
                             setCategorySearch("");
                             setBelanjaSubMode("none");
                             setShowMarketplace(false);
                             setError(null);
                           } else {
-                            setSelectedCategory(cat.name); setShowCatDropdown(false); setCategorySearch(""); setError(null); 
+                            setSelectedCategory(cat.name.trim()); setShowCatDropdown(false); setCategorySearch(""); setError(null); 
                             setBelanjaSubMode("none");
                             setShowMarketplace(false);
                           } 
                         }}
                         className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${(isOverBudget || isProtected) && cat.type !== "income" ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"}`}
-                        style={{ backgroundColor: selectedCategory === cat.name ? "rgba(0,209,139,0.1)" : "transparent" }}
+                        style={{ backgroundColor: selectedCategoryNorm === cat.name.trim() ? "rgba(0,209,139,0.1)" : "transparent" }}
                       >
                         <span className="text-[18px]">{cat.emoji}</span>
                         <div className="flex-1 flex flex-col">
-                          <span className="text-[13px] font-['Inter']" style={{ color: selectedCategory === cat.name ? "#00d18b" : isOverBudget || isProtected ? "#94a3b8" : "var(--app-text)" }}>{cat.name}</span>
+                          <span className="text-[13px] font-['Inter']" style={{ color: selectedCategoryNorm === cat.name.trim() ? "#00d18b" : isOverBudget || isProtected ? "#94a3b8" : "var(--app-text)" }}>{cat.name}</span>
                           {isOverBudget && cat.type !== "income" && (
                             <span className="text-[10px] text-[#ff6464]">Anggaran habis</span>
                           )}
@@ -511,7 +555,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
           )}
 
           {/* Belanja Sub-Mode Selection */}
-          {selectedCategory === "Belanja" && belanjaSubMode === "none" && !showMarketplace && (
+          {isBelanjaBase && belanjaSubMode === "none" && !showMarketplace && (
             <div className="mb-5">
               <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-3">PILIH TIPE BELANJA</p>
               <div className="grid grid-cols-2 gap-3">
@@ -535,6 +579,25 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
             </div>
           )}
 
+          {/* Belanja Offline: Store name (optional) */}
+          {!showCalculator && selectedCategoryNorm === "Belanja Offline" && belanjaSubMode === "offline" && (
+            <div className="mb-5">
+              <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-2">
+                NAMA TOKO (OPSIONAL)
+              </p>
+              <input
+                value={storeName}
+                onChange={e => setStoreName(e.target.value)}
+                placeholder="Contoh: Indomaret / Alfamart"
+                className="w-full h-[48px] px-4 rounded-[14px] outline-none border font-['Inter'] text-[14px]"
+                style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }}
+              />
+              <p className="font-['Inter'] text-[10px] mt-1" style={{ color: "var(--app-text2)" }}>
+                Akan otomatis digabung ke catatan saat disimpan.
+              </p>
+            </div>
+          )}
+
           {/* Marketplace Selection */}
           {showMarketplace && belanjaSubMode === "online" && (
             <div className="mb-5">
@@ -555,7 +618,13 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
                   { name: "Amazon", emoji: "📦" },
                 ].map(mp => (
                   <button key={mp.name} type="button"
-                    onClick={() => { setSelectedCategory(mp.name); setShowMarketplace(false); }}
+                    onClick={() => {
+                      // Marketplace diperlakukan sebagai kategori yang terpilih.
+                      // Setelah memilih, kembali ke form utama agar dropdown menampilkan pilihan tersebut.
+                      setSelectedCategory(mp.name);
+                      setShowMarketplace(false);
+                      setBelanjaSubMode("none");
+                    }}
                     className="py-3 px-2 rounded-[12px] flex items-center gap-2 border transition-all active:scale-95"
                     style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
                     <span className="text-[18px]">{mp.emoji}</span>
@@ -566,17 +635,12 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
             </div>
           )}
 
-          {/* Back button for Belanja Offline and Online (marketplace selected) */}
-          {((belanjaSubMode === "offline" && selectedCategory === "Belanja Offline") || (belanjaSubMode === "online" && showMarketplace === false && selectedCategory !== "Belanja" && selectedCategory !== "")) && (
+          {/* Back button for Belanja Offline */}
+          {(belanjaSubMode === "offline" && selectedCategoryNorm === "Belanja Offline") && (
             <div className="mb-5 flex items-center">
               <button type="button" onClick={() => { 
-                if (belanjaSubMode === "offline") {
-                  setBelanjaSubMode("none"); 
-                  setSelectedCategory("Belanja"); 
-                } else {
-                  setShowMarketplace(true);
-                  setSelectedCategory("Belanja");
-                }
+                setBelanjaSubMode("none"); 
+                setSelectedCategory("Belanja"); 
               }}
                 className="text-[12px] text-[#4edea3] flex items-center gap-1">
                 <span>←</span> Kembali ke jenis belanja
