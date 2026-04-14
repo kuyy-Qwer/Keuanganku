@@ -1,925 +1,882 @@
-import svgPaths from "./svg-5w63t2y1ft";
-import imgAb6AXuBLe5MnoCa2IJqdZ9ZQqDsu2UPm8JvfMtpyb5WR3T4LFbHiuTEk3U3CniuLcqtgoLhhFlZhbO8TIorJq6OBdhESq1Xe27SduJxGe0R90L00Hyn1Y8CjVeolmT7Wr3EbWSgIlIgprmIzbar7OFfoXpL59LUl2EbirTbiu3KuBnQBkl4AUbCWqfdhHpQuRx80DvKotwZqbf3ZvVExYj1UbP5IxLh2Bn9DAs23Y6CMwcxndESrXoAnOBvK9DxQVkB6JNXmz3 from "./c8325e4e8d5f5e900e1b6f41b140e5dd198872fa.png";
+import { useState, useEffect, useRef } from "react";
+import {
+  addTransaction, getCategories, getBalance, formatRupiah, type Category,
+  isCategoryOverBudget, getBudgetStatus, predictCashFlow,
+  getBankAccounts, addBankTransaction, getTransferContacts, upsertTransferContact,
+  type BankAccount, type TransferContact,
+  getDebts, addDebtPayment,
+  getAssets, getCashWalletBalance, addCashWalletTransaction,
+  getBankAvailableBalance,
+} from "../../app/store/database";
+import { playAlertSound, playIncomeSound, playExpenseSound } from "../../app/lib/sounds";
+import { dispatchNotif } from "../../app/lib/notify";
+import BarcodeScanner from "../../app/components/BarcodeScanner";
 
-function Container() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#94a3b8] text-[14px] tracking-[1.4px] uppercase w-full">
-        <p className="leading-[20px]">Total Wealth</p>
-      </div>
-    </div>
-  );
+interface TransactionInputProps {
+  onClose?: () => void;
 }
 
-function Heading() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Heading 1">
-      <div className="flex flex-col font-['Plus_Jakarta_Sans:ExtraBold',sans-serif] font-extrabold justify-center leading-[0] relative shrink-0 text-[#dae2fd] text-[48px] tracking-[-1.2px] w-full">
-        <p className="leading-[48px]">$124,592.00</p>
-      </div>
-    </div>
-  );
-}
+type InputMode = "transaksi" | "barcode";
 
-function Section() {
-  return (
-    <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-name="Section">
-      <Container />
-      <Heading />
-    </div>
-  );
-}
+export default function TransactionInputWithNotesGoPayInspired({ onClose }: TransactionInputProps) {
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [display, setDisplay] = useState("0");
+  const [firstOperand, setFirstOperand] = useState<number | null>(null);
+  const [operator, setOperator] = useState<string | null>(null);
+  const [waitingForSecond, setWaitingForSecond] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [txType, setTxType] = useState<"expense" | "income">("expense");
+  const [saved, setSaved] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [showCatDropdown, setShowCatDropdown] = useState(false);
+  const [barcodeItems, setBarcodeItems] = useState<{ id: string; name: string; price: number }[]>([]);
+  const [protectionStatus, setProtectionStatus] = useState<ReturnType<typeof predictCashFlow> | null>(null);
 
-function Container2() {
-  return (
-    <div className="content-stretch flex flex-col items-start pt-[8px] relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#94a3b8] text-[12px] w-full">
-        <p className="leading-[16px]">Monthly In</p>
-      </div>
-    </div>
-  );
-}
+  // ── Bank & Transfer state ────────────────────────────────────────
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [contacts, setContacts] = useState<TransferContact[]>([]);
+  const [paymentSource, setPaymentSource] = useState<"cash" | string>("cash"); // "cash" atau bankAccountId
+  const [adminFee, setAdminFee] = useState("");
+  const [debtsOptions, setDebtsOptions] = useState<{ id: string; personName: string; remainingAmount: number; type: "debt" | "loan" }[]>([]);
+  const [assetsOptions, setAssetsOptions] = useState<{ id: string; name: string; emoji: string; currentValue: number }[]>([]);
+  const [cashWalletBal, setCashWalletBal] = useState(0);
+  // Transfer fields (muncul jika kategori = Transfer)
+  const [transferMode, setTransferMode] = useState<"own_bank" | "other_person">("own_bank");
+  const [transferToAccountId, setTransferToAccountId] = useState("");
+  const [transferToName, setTransferToName] = useState("");
+  const [transferToBank, setTransferToBank] = useState("");
+  const [transferToNumber, setTransferToNumber] = useState("");
+  const [selectedContact, setSelectedContact] = useState("");
+  const [receiptImage, setReceiptImage] = useState<string | undefined>();
+  const [belanjaSubMode, setBelanjaSubMode] = useState<"none" | "offline" | "online">("none");
+  const [showMarketplace, setShowMarketplace] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-function Container3() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[20px] w-full">
-        <p className="leading-[28px]">+$12,400</p>
-      </div>
-    </div>
-  );
-}
+  const getCategoryEmoji = (catName: string): string => {
+    const map: Record<string, string> = {
+      "Belanja": "🛍️",
+      "Belanja Offline": "🏬",
+      "Shopee": "🛒",
+      "Tokopedia": "🛍️",
+      "TikTok Shop": "🎵",
+      "Lazada": "📦",
+      "Bukalapak": "🛍️",
+      "Blibli": "📳",
+      "JD.ID": "📦",
+      "Amazon": "📦",
+    };
+    return map[catName] || "";
+  };
 
-function Background() {
-  return (
-    <div className="bg-[#171f33] col-1 justify-self-stretch relative rounded-[32px] row-1 self-start shrink-0" data-name="Background">
-      <div className="content-stretch flex flex-col items-start p-[24px] relative w-full">
-        <div className="h-[12px] relative shrink-0 w-[20px]" data-name="Icon">
-          <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 12">
-            <path d={svgPaths.p33125000} fill="var(--fill-0, #4FDBC8)" id="Icon" />
-          </svg>
-        </div>
-        <Container2 />
-        <Container3 />
-      </div>
-    </div>
-  );
-}
+  useEffect(() => {
+    setProtectionStatus(predictCashFlow());
+    const load = () => {
+      setBankAccounts(getBankAccounts());
+      setContacts(getTransferContacts());
+      setDebtsOptions(getDebts().filter(d => !d.isPaid).map(d => ({ id: d.id, personName: d.personName, remainingAmount: d.remainingAmount, type: d.type })));
+      setAssetsOptions(getAssets().map(a => ({ id: a.id, name: a.name, emoji: a.emoji, currentValue: a.currentValue })));
+      setCashWalletBal(getCashWalletBalance());
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener("luminary_data_change", handler);
+    return () => window.removeEventListener("luminary_data_change", handler);
+  }, []);
 
-function Container4() {
-  return (
-    <div className="content-stretch flex flex-col items-start pt-[8px] relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#94a3b8] text-[12px] w-full">
-        <p className="leading-[16px]">Monthly Out</p>
-      </div>
-    </div>
-  );
-}
+  const barcodeSubtotal = barcodeItems.reduce((s, item) => s + item.price, 0);
 
-function Container5() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#ffb4ab] text-[20px] w-full">
-        <p className="leading-[28px]">-$4,210</p>
-      </div>
-    </div>
-  );
-}
+  const handleBarcodeConfirm = () => {
+    if (!selectedCategory) return;
+    const validItems = barcodeItems.filter(i => i.name.trim() && i.price > 0);
+    if (validItems.length === 0) {
+      setError("Tambah minimal 1 item dengan harga");
+      return;
+    }
+    if (barcodeSubtotal < 1000) {
+      setError("Nominal minimal Rp 1.000");
+      return;
+    }
+    const tx = addTransaction({
+      amount: barcodeSubtotal,
+      category: selectedCategory,
+      notes: notes + (validItems.length > 1 ? ` (${validItems.length} items scanned)` : ""),
+      type: "expense",
+      paymentSource: { type: "cash", label: "Cash" },
+    });
+    // barcode flow default: cash wallet
+    addCashWalletTransaction({
+      type: "out",
+      amount: barcodeSubtotal,
+      category: selectedCategory,
+      notes: notes + (validItems.length > 1 ? ` (${validItems.length} items scanned)` : ""),
+      date: new Date().toISOString(),
+      relatedTransactionId: tx.id,
+    });
+    playExpenseSound();
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onClose?.(); }, 1200);
+  };
 
-function Background1() {
-  return (
-    <div className="bg-[#131b2e] col-2 justify-self-stretch relative rounded-[32px] row-1 self-start shrink-0" data-name="Background">
-      <div className="content-stretch flex flex-col items-start p-[24px] relative w-full">
-        <div className="h-[12px] relative shrink-0 w-[20px]" data-name="Icon">
-          <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 12">
-            <path d={svgPaths.p26886d00} fill="var(--fill-0, #FFB4AB)" id="Icon" />
-          </svg>
-        </div>
-        <Container4 />
-        <Container5 />
-      </div>
-    </div>
-  );
-}
+  useEffect(() => { setCategories(getCategories()); }, []);
 
-function Container1() {
-  return (
-    <div className="gap-x-[16px] gap-y-[16px] grid grid-cols-[repeat(2,minmax(0,1fr))] grid-rows-[_124px] relative shrink-0 w-full" data-name="Container">
-      <Background />
-      <Background1 />
-    </div>
-  );
-}
+  useEffect(() => {
+    const handleClickOutside = () => setShowCatDropdown(false);
+    if (showCatDropdown) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [showCatDropdown]);
 
-function Container7() {
-  return (
-    <div className="h-[20px] relative shrink-0 w-[16px]" data-name="Container">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 20">
-        <g id="Container">
-          <path d={svgPaths.p3faf9100} fill="var(--fill-0, #4FDBC8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+  const filteredCats = categories.filter(c => c.type === txType || c.type === "both");
+  const searchFilteredCats = categorySearch.trim() 
+    ? filteredCats.filter(c => c.name.toLowerCase().includes(categorySearch.toLowerCase()))
+    : filteredCats;
 
-function Background2() {
-  return (
-    <div className="bg-[#171f33] content-stretch flex items-center justify-center relative rounded-[9999px] shrink-0 size-[48px]" data-name="Background">
-      <Container7 />
-    </div>
-  );
-}
+  const handleDigit = (digit: string) => {
+    if (waitingForSecond) { setDisplay(digit); setWaitingForSecond(false); }
+    else { setDisplay(display === "0" ? digit : display + digit); }
+  };
+  const handleDot = () => {
+    if (waitingForSecond) { setDisplay("0."); setWaitingForSecond(false); return; }
+    if (!display.includes(".")) setDisplay(display + ".");
+  };
+  const handleOperator = (nextOp: string) => {
+    const val = parseFloat(display);
+    if (firstOperand === null) { setFirstOperand(val); }
+    else if (operator && !waitingForSecond) { const r = calc(firstOperand, val, operator); setDisplay(String(r)); setFirstOperand(r); }
+    setOperator(nextOp); setWaitingForSecond(true);
+  };
+  const calc = (a: number, b: number, op: string) => {
+    if (op === "+") return a + b; if (op === "−") return a - b;
+    if (op === "×") return a * b; if (op === "÷") return b !== 0 ? a / b : 0; return b;
+  };
+  const handleEquals = () => {
+    if (!operator || firstOperand === null) return;
+    const r = calc(firstOperand, parseFloat(display), operator);
+    setDisplay(String(parseFloat(r.toFixed(10)))); setFirstOperand(null); setOperator(null); setWaitingForSecond(false);
+  };
+  const handleBackspace = () => {
+    if (display.length > 1) {
+      setDisplay(display.slice(0, -1));
+    } else {
+      setDisplay("0");
+    }
+  };
+  const handleClear = () => { setDisplay("0"); setFirstOperand(null); setOperator(null); setWaitingForSecond(false); };
+  const handleCalcPress = (v: string) => {
+    if (v === "AC") return handleClear(); if (v === "⌫") return handleBackspace(); if (v === "=") return handleEquals();
+    if (["÷","×","−","+"].includes(v)) return handleOperator(v); if (v === ".") return handleDot(); return handleDigit(v);
+  };
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    const raw = e.target.value.replace(/\./g, ""); 
+    setDisplay(raw.replace(/[^0-9.]/g, "") || "0"); 
+    setError(null);
+  };
+  const formatDisplay = () => { const n = parseFloat(display); if (isNaN(n)) return "0"; if (display.endsWith(".")) return display; return n.toLocaleString("id-ID").replace(/,/g, "."); };
+  const formatRupiahInput = (val: string) => { const n = parseFloat(val); if (isNaN(n)) return "0"; return n.toLocaleString("id-ID").replace(/,/g, "."); };
 
-function Container9() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[24px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[16px] w-[90.41px]">
-        <p className="leading-[24px]">Apple Store</p>
-      </div>
-    </div>
-  );
-}
+  const isTransferCategory = selectedCategory.toLowerCase() === "transfer";
+  const sourceBank = bankAccounts.find(a => a.id === paymentSource) ?? null;
+  const adminFeeNum = parseInt(adminFee.replace(/\D/g, ""), 10) || 0;
+  const isBankSource = paymentSource !== "cash" && !!sourceBank;
+  const isDebtSource = paymentSource.startsWith("debt:");
+  const isAssetSource = paymentSource.startsWith("asset:");
+  const selectedDebtId = isDebtSource ? paymentSource.slice("debt:".length) : "";
+  const selectedAssetId = isAssetSource ? paymentSource.slice("asset:".length) : "";
 
-function Container10() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal h-[16px] justify-center leading-[0] not-italic relative shrink-0 text-[#94a3b8] text-[12px] w-[66.25px]">
-        <p className="leading-[16px]">Technology</p>
-      </div>
-    </div>
-  );
-}
+  useEffect(() => {
+    if (!isTransferCategory) return;
 
-function Container8() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-[90.41px]" data-name="Container">
-      <Container9 />
-      <Container10 />
-    </div>
-  );
-}
+    // Untuk kategori Transfer, sumber dana harus Bank.
+    if (bankAccounts.length === 0) {
+      setError("Kategori Transfer membutuhkan minimal 1 rekening bank. Tambahkan rekening bank terlebih dulu.");
+      return;
+    }
+    const isCurrentBank = bankAccounts.some(a => a.id === paymentSource);
+    if (!isCurrentBank) {
+      setPaymentSource(bankAccounts[0].id);
+      setError(null);
+    }
+  }, [isTransferCategory, bankAccounts, paymentSource]);
 
-function Container6() {
-  return (
-    <div className="content-stretch flex gap-[16px] items-center relative shrink-0" data-name="Container">
-      <Background2 />
-      <Container8 />
-    </div>
-  );
-}
+  const handleConfirm = () => {
+    const amount = parseFloat(display);
+    if (!selectedCategory) return;
+    
+    if (amount < 1000) {
+      const msg = "Nominal minimal adalah " + formatRupiah(1000);
+      setError(msg);
+      playAlertSound();
+      dispatchNotif({ type: "alert", title: "Nominal Terlalu Kecil", message: msg, emoji: "⚠️" });
+      return;
+    }
 
-function Container11() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0" data-name="Container">
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[24px] justify-center leading-[0] not-italic relative shrink-0 text-[#ffb4ab] text-[16px] w-[60.16px]">
-        <p className="leading-[24px]">-$1,299</p>
-      </div>
-    </div>
-  );
-}
+    if (txType === "expense") {
+      // Kategori Transfer hanya boleh menggunakan Bank sebagai sumber dana.
+      if (isTransferCategory && !isBankSource) {
+        const msg = "Untuk kategori Transfer, sumber dana hanya bisa Bank.";
+        setError(msg);
+        playAlertSound();
+        dispatchNotif({ type: "alert", title: "Sumber Dana Tidak Sesuai", message: msg, emoji: "🏦" });
+        return;
+      }
 
-function Overlay() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.4)] relative rounded-[32px] shrink-0 w-full" data-name="Overlay">
-      <div className="flex flex-row items-center size-full">
-        <div className="content-stretch flex items-center justify-between p-[20px] relative w-full">
-          <Container6 />
-          <Container11 />
-        </div>
-      </div>
-    </div>
-  );
-}
+      // Validasi saldo bank jika pakai bank
+      if (isBankSource) {
+        const totalNeeded = amount + adminFeeNum;
+        const available = getBankAvailableBalance(sourceBank.id);
+        if (available < totalNeeded) {
+          const msg = `Saldo ${sourceBank.bankName} tidak cukup. Tersedia: ${formatRupiah(available)}, Dibutuhkan: ${formatRupiah(totalNeeded)}`;
+          setError(msg);
+          playAlertSound();
+          return;
+        }
+      } else if (paymentSource === "cash") {
+        if (cashWalletBal < amount) {
+          const msg = `Cash tidak cukup. Tersedia: ${formatRupiah(cashWalletBal)}, Dibutuhkan: ${formatRupiah(amount)}`;
+          setError(msg);
+          playAlertSound();
+          return;
+        }
+      } else {
+        const currentBal = getBalance();
+        if (amount > currentBal) {
+          const msg = `Uang anda kurang: ${formatRupiah(amount - currentBal)}`;
+          setError(msg);
+          playAlertSound();
+          dispatchNotif({ type: "alert", title: "Saldo Tidak Mencukupi", message: msg, emoji: "⚠️" });
+          return;
+        }
+      }
 
-function MainContentCanvasBlurredBackgroundContent() {
-  return (
-    <div className="blur-[1px] max-w-[512px] opacity-20 relative shrink-0 w-full" data-name="Main Content Canvas (Blurred Background Content)">
-      <div className="content-stretch flex flex-col gap-[32px] items-start max-w-[inherit] pb-[128px] pt-[96px] px-[24px] relative w-full">
-        <Section />
-        <Container1 />
-        <Overlay />
-      </div>
-    </div>
-  );
-}
+      if (protectionStatus?.protectionMode && protectionStatus.affectedCategories.includes(selectedCategory)) {
+        const msg = `Mode Proteksi Aktif! Kategori "${selectedCategory}" dibatasi untuk menjaga saldo. ${protectionStatus.message}`;
+        setError(msg);
+        playAlertSound();
+        dispatchNotif({ type: "alert", title: "Proteksi Keuangan Aktif", message: msg, emoji: "🛡️" });
+        return;
+      }
 
-function Link() {
-  return (
-    <div className="-translate-y-1/2 absolute left-[10.28px] size-[42px] top-1/2" data-name="Link">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 42 42">
-        <g id="Link">
-          <path d={svgPaths.pe6fc280} fill="var(--fill-0, #94A3B8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+      if (isCategoryOverBudget(selectedCategory)) {
+        const budgetStatus = getBudgetStatus(selectedCategory);
+        const msg = `Anggaran kategori "${selectedCategory}" sudah habis (${formatRupiah(budgetStatus.spent)} / ${formatRupiah(budgetStatus.limit)}). Silakan sesuaikan budget Anda.`;
+        setError(msg);
+        playAlertSound();
+        dispatchNotif({ type: "alert", title: "Anggaran Habis", message: msg, emoji: "🚫" });
+        return;
+      }
+    }
 
-function Link1() {
-  return (
-    <div className="-translate-y-1/2 absolute h-[42px] left-[76.88px] top-1/2 w-[43px]" data-name="Link">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 43 42">
-        <g id="Link">
-          <path d={svgPaths.p22e2b400} fill="var(--fill-0, #94A3B8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+    // Simpan ke transaksi utama
+    const tx = addTransaction({
+      amount,
+      category: selectedCategory,
+      notes,
+      type: txType,
+      paymentSource: isBankSource ? { type: "bank", id: sourceBank!.id, label: sourceBank!.bankName }
+        : isDebtSource ? { type: "debt", id: selectedDebtId, label: debtsOptions.find(d => d.id === selectedDebtId)?.personName }
+        : isAssetSource ? { type: "asset", id: selectedAssetId, label: assetsOptions.find(a => a.id === selectedAssetId)?.name }
+        : { type: "cash", label: "Cash" },
+    });
 
-function BackgroundBorderShadow() {
-  return (
-    <div className="relative size-[54px]" data-name="Background+Border+Shadow">
-      <div className="absolute inset-[-27.78%_-46.3%_-64.81%_-46.3%]">
-        <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 104 104">
-          <g filter="url(#filter0_d_1_870)" id="Background+Border+Shadow">
-            <rect fill="var(--fill-0, #00D18B)" height="54" rx="27" shapeRendering="crispEdges" width="54" x="25" y="15" />
-            <rect height="50" rx="25" shapeRendering="crispEdges" stroke="var(--stroke-0, #1A2233)" strokeWidth="4" width="50" x="27" y="17" />
-            <path d={svgPaths.p302cc400} fill="var(--fill-0, #060E20)" id="Icon" />
-          </g>
-          <defs>
-            <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="104" id="filter0_d_1_870" width="104" x="0" y="0">
-              <feFlood floodOpacity="0" result="BackgroundImageFix" />
-              <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
-              <feOffset dy="10" />
-              <feGaussianBlur stdDeviation="12.5" />
-              <feComposite in2="hardAlpha" operator="out" />
-              <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0.819608 0 0 0 0 0.545098 0 0 0 0.4 0" />
-              <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow_1_870" />
-              <feBlend in="SourceGraphic" in2="effect1_dropShadow_1_870" mode="normal" result="shape" />
-            </filter>
-          </defs>
-        </svg>
-      </div>
-    </div>
-  );
-}
+    // Jika pakai bank → update saldo bank
+    if (isBankSource) {
+      let transferToContactId: string | undefined;
+      let toName = transferToName.trim();
+      let toBank = transferToBank.trim();
+      let toNumber = transferToNumber.trim();
 
-function Link2() {
-  return (
-    <div className="-translate-y-1/2 absolute h-[40px] left-[226.06px] top-1/2 w-[44px]" data-name="Link">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 44 40">
-        <g id="Link">
-          <path d={svgPaths.p8da8600} fill="var(--fill-0, #94A3B8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+      if (isTransferCategory && transferMode === "other_person" && selectedContact) {
+        const c = contacts.find(c => c.id === selectedContact);
+        if (c) { toName = c.name; toBank = c.bankName; toNumber = c.accountNumber; transferToContactId = c.id; }
+      }
+      if (isTransferCategory && transferMode === "other_person" && toName && toBank && toNumber) {
+        transferToContactId = upsertTransferContact({ name: toName, bankName: toBank, accountNumber: toNumber });
+      }
 
-function Link3() {
-  return (
-    <div className="-translate-y-1/2 absolute left-[292.66px] size-[40px] top-1/2" data-name="Link">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 40 40">
-        <g id="Link">
-          <path d={svgPaths.p302af480} fill="var(--fill-0, #94A3B8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+      addBankTransaction({
+        bankAccountId: sourceBank.id,
+        type: isTransferCategory ? "transfer_out" : txType === "income" ? "credit" : "debit",
+        amount,
+        adminFee: adminFeeNum,
+        category: selectedCategory,
+        notes,
+        paymentMethod: sourceBank.id,
+        receiptImageUrl: receiptImage,
+        transferToAccountId: isTransferCategory && transferMode === "own_bank" ? transferToAccountId : undefined,
+        transferToContactId,
+        transferToName: toName || undefined,
+        transferToBank: toBank || undefined,
+        transferToNumber: toNumber || undefined,
+        date: new Date().toISOString(),
+      });
+    }
 
-function OverlayBorderShadowOverlayBlur() {
-  return (
-    <div className="absolute backdrop-blur-[12px] bg-[rgba(45,52,73,0.8)] bottom-[24px] h-[64px] left-[19.5px] rounded-[9999px] w-[351px]" data-name="Overlay+Border+Shadow+OverlayBlur">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[9999px] shadow-[0px_10px_30px_0px_rgba(0,0,0,0.5)]" />
-      <Link />
-      <Link1 />
-      <div className="-translate-y-1/2 absolute flex items-center justify-center left-[140.27px] size-[59.4px] top-[calc(50%-24px)]" style={{ "--transform-inner-width": "1185", "--transform-inner-height": "21" } as React.CSSProperties}>
-        <div className="flex-none scale-x-[110.00000000000001%] scale-y-[110.00000000000001%]">
-          <BackgroundBorderShadow />
-        </div>
-      </div>
-      <Link2 />
-      <Link3 />
-    </div>
-  );
-}
+    // Jika pakai cash → catat cash wallet tx
+    if (paymentSource === "cash") {
+      addCashWalletTransaction({
+        type: txType === "income" ? "in" : "out",
+        amount,
+        category: selectedCategory,
+        notes,
+        date: new Date().toISOString(),
+        relatedTransactionId: tx.id,
+      });
+    }
 
-function Ab6AXuBLe5MnoCa2IJqdZ9ZQqDsu2UPm8JvfMtpyb5WR3T4LFbHiuTEk3U3CniuLcqtgoLhhFlZhbO8TIorJq6OBdhESq1Xe27SduJxGe0R90L00Hyn1Y8CjVeolmT7Wr3EbWSgIlIgprmIzbar7OFfoXpL59LUl2EbirTbiu3KuBnQBkl4AUbCWqfdhHpQuRx80DvKotwZqbf3ZvVExYj1UbP5IxLh2Bn9DAs23Y6CMwcxndESrXoAnOBvK9DxQVkB6JNXmz() {
-  return (
-    <div className="flex-[1_0_0] min-h-px min-w-px relative w-full" data-name="AB6AXuB-Le5MNO-Ca-2iJqdZ9Z-qqDsu2uPm8JVFMtpyb5wR3t4LFbHiuTEk3u3cniu-LcqtgoLHHFlZhbO8tIorJq6OBdhESq1Xe27SDUJxGe0R90L00hyn1y8CJ-VeolmT7wr3ebWSgIlIGPRMIzbar7oFFOXpL59LUl2EbirTbiu3kuBnQBkl-4aUbCWqfdhHpQURx80DvKOTWZqbf3ZV-vExYj1UbP5ixLh2_Bn9DAs23y6cMWCXND_eSRXoAnOBvK9dxQVkB6jNXmz3">
-      <div className="absolute bg-clip-padding border-0 border-[transparent] border-solid inset-0 overflow-hidden pointer-events-none">
-        <img alt="" className="absolute left-0 max-w-none size-full top-0" src={imgAb6AXuBLe5MnoCa2IJqdZ9ZQqDsu2UPm8JvfMtpyb5WR3T4LFbHiuTEk3U3CniuLcqtgoLhhFlZhbO8TIorJq6OBdhESq1Xe27SduJxGe0R90L00Hyn1Y8CjVeolmT7Wr3EbWSgIlIgprmIzbar7OFfoXpL59LUl2EbirTbiu3KuBnQBkl4AUbCWqfdhHpQuRx80DvKotwZqbf3ZvVExYj1UbP5IxLh2Bn9DAs23Y6CMwcxndESrXoAnOBvK9DxQVkB6JNXmz3} />
-      </div>
-    </div>
-  );
-}
+    // Jika pakai hutang/piutang → bayar cicilan (expense)
+    if (isDebtSource && selectedDebtId) {
+      if (txType === "expense") addDebtPayment(selectedDebtId, amount);
+    }
 
-function Border() {
-  return (
-    <div className="relative rounded-[9999px] shrink-0 size-[40px]" data-name="Border">
-      <div className="content-stretch flex flex-col items-start justify-center overflow-clip p-px relative rounded-[inherit] size-full">
-        <Ab6AXuBLe5MnoCa2IJqdZ9ZQqDsu2UPm8JvfMtpyb5WR3T4LFbHiuTEk3U3CniuLcqtgoLhhFlZhbO8TIorJq6OBdhESq1Xe27SduJxGe0R90L00Hyn1Y8CjVeolmT7Wr3EbWSgIlIgprmIzbar7OFfoXpL59LUl2EbirTbiu3KuBnQBkl4AUbCWqfdhHpQuRx80DvKotwZqbf3ZvVExYj1UbP5IxLh2Bn9DAs23Y6CMwcxndESrXoAnOBvK9DxQVkB6JNXmz />
-      </div>
-      <div aria-hidden="true" className="absolute border border-[rgba(0,209,139,0.2)] border-solid inset-0 pointer-events-none rounded-[9999px]" />
-    </div>
-  );
-}
+    if (txType === "income") playIncomeSound();
+    else playExpenseSound();
+    
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onClose?.(); }, 1200);
+  };
 
-function Container13() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0" data-name="Container">
-      <div className="flex flex-col font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold h-[28px] justify-center leading-[0] relative shrink-0 text-[#00d18b] text-[20px] tracking-[4px] uppercase w-[135.55px]">
-        <p className="leading-[28px]">LUMINARY</p>
-      </div>
-    </div>
-  );
-}
+  const calcButtons = [["7","8","9","÷"],["4","5","6","×"],["1","2","3","−"],["AC","0",".","+"]];
 
-function Container12() {
-  return (
-    <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-name="Container">
-      <Border />
-      <Container13 />
-    </div>
-  );
-}
-
-function Container14() {
-  return (
-    <div className="h-[20px] relative shrink-0 w-[16px]" data-name="Container">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16 20">
-        <g id="Container">
-          <path d={svgPaths.p164b49c0} fill="var(--fill-0, #94A3B8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function Button() {
-  return (
-    <div className="content-stretch flex flex-col items-center justify-center relative shrink-0" data-name="Button">
-      <Container14 />
-    </div>
-  );
-}
-
-function HeaderTopAppBar() {
-  return (
-    <div className="absolute backdrop-blur-[6px] bg-[rgba(6,14,32,0.8)] content-stretch flex h-[80px] items-center justify-between left-0 px-[24px] top-0 w-[390px]" data-name="Header - TopAppBar">
-      <Container12 />
-      <Button />
-    </div>
-  );
-}
-
-function SheetHandleMargin() {
-  return (
-    <div className="content-stretch flex flex-col h-[20px] items-start pb-[16px] relative shrink-0 w-[40px]" data-name="Sheet Handle:margin">
-      <div className="bg-[rgba(51,65,85,0.5)] h-[4px] rounded-[9999px] shrink-0 w-[40px]" data-name="Sheet Handle" />
-    </div>
-  );
-}
-
-function Heading1() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Heading 2">
-      <div className="flex flex-col font-['Plus_Jakarta_Sans:Bold',sans-serif] font-bold h-[32px] justify-center leading-[0] relative shrink-0 text-[#dae2fd] text-[24px] w-[193.33px]">
-        <p className="leading-[32px]">New Transaction</p>
-      </div>
-    </div>
-  );
-}
-
-function Container17() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal h-[20px] justify-center leading-[0] not-italic relative shrink-0 text-[#94a3b8] text-[14px] w-[213.36px]">
-        <p className="leading-[20px]">Record your financial movement</p>
-      </div>
-    </div>
-  );
-}
-
-function Container16() {
-  return (
-    <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-[213.36px]" data-name="Container">
-      <Heading1 />
-      <Container17 />
-    </div>
-  );
-}
-
-function Container18() {
-  return (
-    <div className="relative shrink-0 size-[14px]" data-name="Container">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 14 14">
-        <g id="Container">
-          <path d={svgPaths.p15494480} fill="var(--fill-0, #94A3B8)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function Button1() {
-  return (
-    <div className="bg-[rgba(255,255,255,0.05)] content-stretch flex items-center justify-center relative rounded-[9999px] shrink-0 size-[40px]" data-name="Button">
-      <Container18 />
-    </div>
-  );
-}
-
-function Container15() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Container">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-start justify-between relative w-full">
-        <Container16 />
-        <Button1 />
-      </div>
-    </div>
-  );
-}
-
-function Label() {
-  return (
-    <div className="opacity-80 relative shrink-0 w-full" data-name="Label">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col items-start relative w-full">
-        <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[10px] tracking-[2px] uppercase w-full">
-          <p className="leading-[15px]">ENTER AMOUNT</p>
+  if (saved) {
+    return (
+      <div className="relative w-full" onClick={e => e.stopPropagation()}>
+        <div className="rounded-t-[40px] border-t p-10 flex flex-col items-center gap-4"
+          style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
+          <div className="bg-[rgba(78,222,163,0.15)] rounded-full size-20 flex items-center justify-center"><span className="text-[40px]">✅</span></div>
+          <p className="font-['Plus_Jakarta_Sans'] font-bold text-[20px]" style={{ color: "var(--app-text)" }}>
+            {txType === "income" ? "Pemasukan" : "Pengeluaran"} Tersimpan!
+          </p>
+            <p className="font-['Inter'] text-[14px]" style={{ color: "var(--app-text2)" }}>
+            {txType === "income" ? "+" : "-"}Rp{formatRupiahInput(display)} · {selectedCategory}
+          </p>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-function Paragraph() {
   return (
-    <div className="h-[49px] relative shrink-0 w-full" data-name="Paragraph">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid leading-[0] relative size-full">
-        <div className="-translate-y-1/2 absolute flex flex-col font-['Plus_Jakarta_Sans:SemiBold',sans-serif] font-semibold h-[32px] justify-center left-0 text-[#64748b] text-[24px] top-[33px] w-[15.53px]">
-          <p className="leading-[32px]">$</p>
-        </div>
-        <div className="-translate-y-1/2 absolute flex flex-col font-['Plus_Jakarta_Sans:ExtraBold',sans-serif] font-extrabold h-[48px] justify-center left-[23.53px] text-[#dae2fd] text-[48px] top-[24px] tracking-[-1.2px] w-[219.17px]">
-          <p className="leading-[48px]">2,450.00</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+    <div className="relative w-full" onClick={e => e.stopPropagation()}>
+      <div className="flex justify-center pt-3 pb-1"><div className="bg-[rgba(51,65,85,0.5)] h-1 rounded-full w-10" /></div>
+      <div className="rounded-t-[40px] border-t shadow-[0px_-20px_60px_0px_rgba(0,0,0,0.4)] w-full"
+        style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
+        <div className="overflow-y-auto max-h-[85vh] px-7 pt-7 pb-10">
 
-function AmountInputViewGoPayStyleRoundedBox() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.4)] relative rounded-[16px] shrink-0 w-full" data-name="Amount Input View - GoPay Style Rounded Box">
-      <div className="overflow-clip rounded-[inherit] size-full">
-        <div className="content-stretch flex flex-col gap-[4px] items-start p-[25px] relative w-full">
-          <div className="absolute bg-[#00d18b] bottom-px left-px shadow-[0px_0px_15px_0px_rgba(0,209,139,0.3)] top-px w-[6px]" data-name="Background+Shadow" />
-          <Label />
-          <Paragraph />
-        </div>
-      </div>
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px]" />
-    </div>
-  );
-}
+          {/* Header */}
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 className="font-['Plus_Jakarta_Sans'] font-bold text-[22px]" style={{ color: "var(--app-text)" }}>Transaksi Baru</h2>
+              <p className="font-['Inter'] text-[13px] mt-0.5" style={{ color: "var(--app-text2)" }}>Catat pergerakan keuangan</p>
+            </div>
+            <button type="button" onClick={e => { e.stopPropagation(); onClose?.(); }}
+              className="bg-[rgba(255,255,255,0.05)] flex items-center justify-center rounded-full size-9 hover:bg-[rgba(255,255,255,0.1)]">
+              <svg className="size-3" fill="none" viewBox="0 0 14 14"><path d="M13 1L1 13M1 1L13 13" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" /></svg>
+            </button>
+          </div>
 
-function Label1() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Label">
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#64748b] text-[10px] tracking-[2px] uppercase w-full">
-        <p className="leading-[15px]">SELECT CATEGORY</p>
-      </div>
-    </div>
-  );
-}
+          {/* Type Toggle */}
+          <div className="flex gap-2 mb-5">
+            <button type="button" onClick={e => { e.stopPropagation(); setTxType("expense"); setSelectedCategory(""); }}
+              className="flex-1 py-2.5 rounded-full font-['Inter'] font-semibold text-[13px] transition-all"
+              style={{ backgroundColor: txType === "expense" ? "rgba(255,180,171,0.15)" : "#2d3449", color: txType === "expense" ? "#ffb4ab" : "#64748b", border: txType === "expense" ? "1px solid rgba(255,180,171,0.3)" : "1px solid transparent" }}>
+              Pengeluaran
+            </button>
+            <button type="button" onClick={e => { e.stopPropagation(); setTxType("income"); setSelectedCategory(""); setError(null); }}
+              className="flex-1 py-2.5 rounded-full font-['Inter'] font-semibold text-[13px] transition-all"
+              style={{ backgroundColor: txType === "income" ? "rgba(78,222,163,0.15)" : "#2d3449", color: txType === "income" ? "#4edea3" : "#64748b", border: txType === "income" ? "1px solid rgba(78,222,163,0.3)" : "1px solid transparent" }}>
+              Pemasukan
+            </button>
+          </div>
 
-function Container21() {
-  return (
-    <div className="h-[14.25px] relative shrink-0 w-[15px]" data-name="Container">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 15 14.25">
-        <g id="Container">
-          <path d={svgPaths.p3af3b240} fill="var(--fill-0, #060E20)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+          {/* Amount */}
+          <div className="bg-[rgba(45,52,73,0.4)] relative rounded-[16px] w-full mb-5 border border-[rgba(255,255,255,0.05)]">
+            <div className="absolute top-px bottom-px left-px w-1.5 rounded-l-[14px]" style={{ backgroundColor: txType === "income" ? "#4edea3" : "#ffb4ab" }} />
+            <div className="p-5 pl-7">
+              <p className="font-['Inter'] font-semibold text-[10px] tracking-[2px] uppercase opacity-80 mb-1.5" style={{ color: txType === "income" ? "#4edea3" : "#ffb4ab" }}>MASUKKAN NOMINAL</p>
+              <div className="flex items-baseline gap-1">
+                <span className="font-['Plus_Jakarta_Sans'] font-semibold text-[18px] text-[#64748b]">Rp</span>
+                {showCalculator ? (
+                  <span className="font-['Plus_Jakarta_Sans'] font-extrabold text-[36px] tracking-[-1px] leading-[40px]" style={{ color: "var(--app-text)" }}>{formatRupiahInput(display)}</span>
+                ) : (
+                  <input type="text" inputMode="decimal" 
+                    value={display === "0" ? "" : formatRupiahInput(display)} 
+                    onChange={handleAmountChange} placeholder="0"
+                    className="font-['Plus_Jakarta_Sans'] font-extrabold text-[36px] tracking-[-1px] leading-[40px] bg-transparent outline-none w-full placeholder-[#334155]"
+                    style={{ color: "var(--app-text)" }} />
+                )}
+              </div>
+            </div>
+          </div>
 
-function Button2() {
-  return (
-    <div className="absolute bg-[#00d18b] content-stretch flex gap-[8px] items-center left-0 pb-[11.5px] pt-[10.5px] px-[20px] rounded-[9999px] shadow-[0px_4px_12px_0px_rgba(0,209,139,0.3)] top-0" data-name="Button">
-      <Container21 />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[20px] justify-center leading-[0] not-italic relative shrink-0 text-[#060e20] text-[14px] text-center w-[53.81px]">
-        <p className="leading-[20px]">Savings</p>
-      </div>
-    </div>
-  );
-}
+          {/* Categories - Dropdown - Hidden when calculator is expanded */}
+          {!showCalculator && selectedCategory !== "Belanja" && belanjaSubMode === "none" && !showMarketplace && (
+          <div className="mb-5">
+            <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-3">PILIH KATEGORI</p>
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setShowCatDropdown(!showCatDropdown)}
+                className="w-full h-[48px] px-4 rounded-[12px] flex items-center justify-between text-[13px] font-['Inter']"
+                style={{ backgroundColor: "var(--app-card2)", border: "1px solid var(--app-border)", color: selectedCategory ? "var(--app-text)" : "var(--app-text2)" }}
+              >
+                <span className="flex items-center gap-2">
+                  {selectedCategory ? (
+                    <>
+                      <span>{filteredCats.find(c => c.name === selectedCategory)?.emoji || getCategoryEmoji(selectedCategory)}</span>
+                      <span>{selectedCategory}</span>
+                    </>
+                  ) : (
+                    "Pilih kategori..."
+                  )}
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${showCatDropdown ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showCatDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-2 rounded-[12px] border z-50 max-h-[200px] overflow-y-auto"
+                  style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+                  {/* Search in dropdown */}
+                  <div className="sticky top-0 p-2 border-b" style={{ borderColor: "var(--app-border)" }}>
+                    <input 
+                      type="text"
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                      placeholder="Cari..."
+                      className="w-full h-[36px] px-3 rounded-[8px] bg-[var(--app-card)] border text-[13px] outline-none"
+                      style={{ borderColor: "var(--app-border)", color: "var(--app-text)" }}
+                      autoFocus
+                    />
+                  </div>
+                  {searchFilteredCats.length > 0 ? (
+                    searchFilteredCats.map(cat => {
+                      const budgetStatus = getBudgetStatus(cat.name);
+                      const isOverBudget = budgetStatus.isOverBudget;
+                      const isProtected = protectionStatus?.protectionMode && protectionStatus.affectedCategories.includes(cat.name);
+                      return (
+                      <button key={cat.id} type="button"
+                        onClick={(e) => { 
+                          if (isOverBudget && cat.type !== "income") {
+                            setError(`Anggaran "${cat.name}" sudah habis bulan ini!`);
+                            playAlertSound();
+                            return;
+                          }
+                          if (isProtected && cat.type !== "income") {
+                            setError(`Mode Proteksi Aktif! Kategori "${cat.name}" dibatasi sementara.`);
+                            playAlertSound();
+                            return;
+                          }
+                          e.stopPropagation(); 
+                          if (cat.name === "Belanja") {
+                            setSelectedCategory(cat.name);
+                            setShowCatDropdown(false);
+                            setCategorySearch("");
+                            setBelanjaSubMode("none");
+                            setShowMarketplace(false);
+                            setError(null);
+                          } else {
+                            setSelectedCategory(cat.name); setShowCatDropdown(false); setCategorySearch(""); setError(null); 
+                            setBelanjaSubMode("none");
+                            setShowMarketplace(false);
+                          } 
+                        }}
+                        className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${(isOverBudget || isProtected) && cat.type !== "income" ? "opacity-40 cursor-not-allowed" : "hover:bg-white/5"}`}
+                        style={{ backgroundColor: selectedCategory === cat.name ? "rgba(0,209,139,0.1)" : "transparent" }}
+                      >
+                        <span className="text-[18px]">{cat.emoji}</span>
+                        <div className="flex-1 flex flex-col">
+                          <span className="text-[13px] font-['Inter']" style={{ color: selectedCategory === cat.name ? "#00d18b" : isOverBudget || isProtected ? "#94a3b8" : "var(--app-text)" }}>{cat.name}</span>
+                          {isOverBudget && cat.type !== "income" && (
+                            <span className="text-[10px] text-[#ff6464]">Anggaran habis</span>
+                          )}
+                          {isProtected && cat.type !== "income" && !isOverBudget && (
+                            <span className="text-[10px] text-[#ff8c00]">Terbatas Proteksi</span>
+                          )}
+                        </div>
+                      </button>
+                    );})
+                  ) : (
+                    <p className="text-[12px] text-[#64748b] text-center py-4">Tidak ada kategori</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          )}
 
-function Container22() {
-  return (
-    <div className="h-[16.5px] relative shrink-0 w-[13.5px]" data-name="Container">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 13.5 16.5">
-        <g id="Container">
-          <path d={svgPaths.p1b176600} fill="var(--fill-0, #E2E8F0)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+          {/* Belanja Sub-Mode Selection */}
+          {selectedCategory === "Belanja" && belanjaSubMode === "none" && !showMarketplace && (
+            <div className="mb-5">
+              <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-3">PILIH TIPE BELANJA</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button"
+                  onClick={() => { setBelanjaSubMode("offline"); setSelectedCategory("Belanja Offline"); }}
+                  className="py-4 px-3 rounded-[16px] flex flex-col items-center gap-2 border transition-all active:scale-95"
+                  style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+                  <span className="text-[28px]">🏬</span>
+                  <span className="text-[13px] font-['Inter'] font-semibold" style={{ color: "var(--app-text)" }}>Offline</span>
+                  <span className="text-[10px]" style={{ color: "var(--app-text2)" }}>Toko fisik</span>
+                </button>
+                <button type="button"
+                  onClick={() => { setBelanjaSubMode("online"); setShowMarketplace(true); }}
+                  className="py-4 px-3 rounded-[16px] flex flex-col items-center gap-2 border transition-all active:scale-95"
+                  style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+                  <span className="text-[28px]">📱</span>
+                  <span className="text-[13px] font-['Inter'] font-semibold" style={{ color: "var(--app-text)" }}>Online</span>
+                  <span className="text-[10px]" style={{ color: "var(--app-text2)" }}>Marketplace</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-function Button3() {
-  return (
-    <div className="absolute bg-[#2d3449] content-stretch flex gap-[8px] items-center left-[129.81px] px-[21px] py-[11px] rounded-[9999px] top-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[9999px]" />
-      <Container22 />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[20px] justify-center leading-[0] not-italic relative shrink-0 text-[#e2e8f0] text-[14px] text-center w-[36.42px]">
-        <p className="leading-[20px]">Jajan</p>
-      </div>
-    </div>
-  );
-}
+          {/* Marketplace Selection */}
+          {showMarketplace && belanjaSubMode === "online" && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase">PILIH MARKETPLACE</p>
+                <button type="button" onClick={() => { setShowMarketplace(false); setBelanjaSubMode("none"); setSelectedCategory("Belanja"); }}
+                  className="text-[12px] text-[#ff6464]">Kembali</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { name: "Shopee", emoji: "🛒" },
+                  { name: "Tokopedia", emoji: "🛍️" },
+                  { name: "TikTok Shop", emoji: "🎵" },
+                  { name: "Lazada", emoji: "📦" },
+                  { name: "Bukalapak", emoji: "🛍️" },
+                  { name: "Blibli", emoji: "📳" },
+                  { name: "JD.ID", emoji: "📦" },
+                  { name: "Amazon", emoji: "📦" },
+                ].map(mp => (
+                  <button key={mp.name} type="button"
+                    onClick={() => { setSelectedCategory(mp.name); setShowMarketplace(false); }}
+                    className="py-3 px-2 rounded-[12px] flex items-center gap-2 border transition-all active:scale-95"
+                    style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+                    <span className="text-[18px]">{mp.emoji}</span>
+                    <span className="text-[12px] font-['Inter']" style={{ color: "var(--app-text)" }}>{mp.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-function Container23() {
-  return (
-    <div className="h-[14.25px] relative shrink-0 w-[15px]" data-name="Container">
-      <svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 15 14.25">
-        <g id="Container">
-          <path d={svgPaths.p56f7860} fill="var(--fill-0, #E2E8F0)" id="Icon" />
-        </g>
-      </svg>
-    </div>
-  );
-}
+          {/* Back button for Belanja Offline and Online (marketplace selected) */}
+          {((belanjaSubMode === "offline" && selectedCategory === "Belanja Offline") || (belanjaSubMode === "online" && showMarketplace === false && selectedCategory !== "Belanja" && selectedCategory !== "")) && (
+            <div className="mb-5 flex items-center">
+              <button type="button" onClick={() => { 
+                if (belanjaSubMode === "offline") {
+                  setBelanjaSubMode("none"); 
+                  setSelectedCategory("Belanja"); 
+                } else {
+                  setShowMarketplace(true);
+                  setSelectedCategory("Belanja");
+                }
+              }}
+                className="text-[12px] text-[#4edea3] flex items-center gap-1">
+                <span>←</span> Kembali ke jenis belanja
+              </button>
+            </div>
+          )}
 
-function Button4() {
-  return (
-    <div className="absolute bg-[#2d3449] content-stretch flex gap-[8px] items-center left-0 px-[21px] py-[11px] rounded-[9999px] top-[52px]" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[9999px]" />
-      <Container23 />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[20px] justify-center leading-[0] not-italic relative shrink-0 text-[#e2e8f0] text-[14px] text-center w-[61.39px]">
-        <p className="leading-[20px]">Business</p>
-      </div>
-    </div>
-  );
-}
+          {/* Scanned Items - Hidden when calculator is expanded */}
+          {(!showCalculator && barcodeItems.length > 0) && (
+            <div className="mb-5 p-4 rounded-[16px]" style={{ backgroundColor: "var(--app-card2)" }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-['Inter'] text-[11px] text-[#64748b] uppercase">Item Ter_scan ({barcodeItems.length})</p>
+                <button type="button" onClick={() => setBarcodeItems([])} className="text-[12px] text-[#ff6464]">Hapus semua</button>
+              </div>
+              <div className="space-y-2">
+                {barcodeItems.map((item, idx) => (
+                  <div key={item.id} className="flex gap-2 items-center">
+                    <span className="text-[12px] text-[#64748b] w-5 shrink-0">{idx + 1}.</span>
+                    <div className="flex-1">
+                      <input
+                        value={item.name}
+                        onChange={(e) => setBarcodeItems(barcodeItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))}
+                        placeholder="Nama item"
+                        className="w-full h-[36px] px-3 rounded-[10px] text-[13px] outline-none"
+                        style={{ backgroundColor: "var(--app-card)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      value={item.price || ""}
+                      onChange={(e) => setBarcodeItems(barcodeItems.map(i => i.id === item.id ? { ...i, price: parseInt(e.target.value) || 0 } : i))}
+                      placeholder="0"
+                      className="w-[80px] h-[36px] px-2 rounded-[10px] text-[13px] text-right outline-none"
+                      style={{ backgroundColor: "var(--app-card)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
+                    />
+                    <button type="button" onClick={() => setBarcodeItems(barcodeItems.filter(i => i.id !== item.id))}
+                      className="size-7 rounded-full flex items-center justify-center text-[#ff6464]"
+                      style={{ backgroundColor: "rgba(255,100,100,0.1)" }}>
+                      <span className="text-[14px]">×</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-function Container20() {
-  return (
-    <div className="h-[94px] relative shrink-0 w-full" data-name="Container">
-      <Button2 />
-      <Button3 />
-      <Button4 />
-    </div>
-  );
-}
+          {/* Barcode Scanner Button - Hidden when calculator is expanded */}
+          {!showCalculator && (
+          <>
+          <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-2">SCAN BARCODE STRUK / INVOICE PEMBELIAN</p>
+          <button 
+            type="button" 
+            onClick={() => setShowScanner(true)}
+            className="w-full py-3 rounded-[16px] flex items-center justify-center gap-2 mb-5"
+            style={{ backgroundColor: "#2d3449", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <span className="text-[20px]">📷</span>
+            <span className="font-['Inter'] text-[13px]" style={{ color: "var(--app-text)" }}>Scan Barcode / QR</span>
+          </button>
 
-function CategoryChipsModernVisualDistinction() {
-  return (
-    <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full" data-name="Category Chips - Modern Visual Distinction">
-      <Label1 />
-      <Container20 />
-    </div>
-  );
-}
+          {/* Barcode Scanner Full Screen */}
+          {showScanner && (
+            <BarcodeScanner 
+              onClose={() => setShowScanner(false)} 
+              onScan={(data) => {
+                setBarcodeItems([...barcodeItems, { id: crypto.randomUUID(), name: data, price: 0 }]);
+                setShowScanner(false);
+              }}
+            />
+          )}
 
-function Label2() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Label">
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#64748b] text-[10px] tracking-[2px] uppercase w-full">
-        <p className="leading-[15px]">NOTES</p>
-      </div>
-    </div>
-  );
-}
+          </>
+          )}
 
-function Container24() {
-  return (
-    <div className="content-stretch flex flex-[1_0_0] flex-col items-start min-h-px min-w-px relative" data-name="Container">
-      <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#475569] text-[14px] w-full">
-        <p className="leading-[20px]">Apa tujuan transaksi ini?</p>
-      </div>
-    </div>
-  );
-}
+          {/* Notes - disembunyikan saat kalkulator tampil */}
+          {!showCalculator && (
+          <div className="mb-5">
+            <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-2">CATATAN</p>
+            <div className="rounded-[16px] border" style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Apa tujuan transaksi ini?"
+                className="w-full bg-transparent p-4 font-['Inter'] text-[14px] resize-none outline-none min-h-[72px]"
+                style={{ color: "var(--app-text)" }} />
+            </div>
+          </div>
+          )}
 
-function Textarea() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Textarea">
-      <div className="flex flex-row justify-center overflow-clip rounded-[inherit] size-full">
-        <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-start justify-center pb-[56px] pt-[16px] px-[16px] relative w-full">
-          <Container24 />
-        </div>
-      </div>
-    </div>
-  );
-}
+          {/* ── SUMBER DANA ── */}
+          {!showCalculator && (
+          <div className="mb-5">
+            <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-2">SUMBER DANA</p>
+            <select value={paymentSource} onChange={e => setPaymentSource(e.target.value)}
+              className="w-full h-[48px] px-4 rounded-[12px] font-['Inter'] text-[13px] font-bold outline-none border"
+              style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }}>
+              {!isTransferCategory && (
+                <>
+                  <option value="cash">💵 Cash</option>
+                  {debtsOptions.length > 0 && (
+                    <optgroup label="Hutang/Piutang">
+                      {debtsOptions.map(d => (
+                        <option key={d.id} value={`debt:${d.id}`}>🧾 {d.personName} — sisa {formatRupiah(d.remainingAmount)}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {assetsOptions.length > 0 && (
+                    <optgroup label="Aset">
+                      {assetsOptions.map(a => (
+                        <option key={a.id} value={`asset:${a.id}`}>{a.emoji} {a.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </>
+              )}
+              {bankAccounts.length === 0 ? (
+                <option value="cash" disabled>🏦 Belum ada rekening bank</option>
+              ) : (
+                bankAccounts.map(a => (
+                  <option key={a.id} value={a.id}>🏦 {a.bankName} — {formatRupiah(a.balance)}</option>
+                ))
+              )}
+            </select>
+            {sourceBank && (
+              <p className="font-['Inter'] text-[10px] mt-1 text-[#4edea3]">
+                Saldo {sourceBank.bankName}: {formatRupiah(getBankAvailableBalance(sourceBank.id))} (available)
+              </p>
+            )}
+          </div>
+          )}
 
-function OverlayBorder() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.4)] relative rounded-[16px] shrink-0 w-full" data-name="Overlay+Border">
-      <div className="content-stretch flex flex-col items-start overflow-clip p-px relative rounded-[inherit] w-full">
-        <Textarea />
-      </div>
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px]" />
-    </div>
-  );
-}
+          {/* ── BIAYA ADMIN (muncul jika pakai bank) ── */}
+          {!showCalculator && isBankSource && (
+          <div className="mb-5">
+            <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-2">BIAYA ADMIN</p>
+            <div className="flex gap-2 mb-2">
+              {[0, 2500, 6500, 7500, 10000].map(preset => (
+                <button key={preset} type="button" onClick={() => setAdminFee(preset === 0 ? "" : String(preset))}
+                  className="flex-1 py-1.5 rounded-full text-[11px] font-bold transition-all"
+                  style={{
+                    backgroundColor: (adminFee === String(preset) || (preset === 0 && !adminFee)) ? "#fbbf24" : "#2d3449",
+                    color: (adminFee === String(preset) || (preset === 0 && !adminFee)) ? "#003824" : "#64748b",
+                  }}>
+                  {preset === 0 ? "Gratis" : `${(preset/1000).toFixed(preset % 1000 === 0 ? 0 : 1)}k`}
+                </button>
+              ))}
+            </div>
+            <input type="number" value={adminFee} onChange={e => setAdminFee(e.target.value)}
+              placeholder="0"
+              className="w-full h-[44px] px-4 rounded-[12px] font-['Inter'] text-[14px] outline-none border"
+              style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }} />
+          </div>
+          )}
 
-function NotesInputField() {
-  return (
-    <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-name="Notes Input Field">
-      <Label2 />
-      <OverlayBorder />
-    </div>
-  );
-}
+          {/* ── SECTION TRANSFER (muncul jika kategori = Transfer) ── */}
+          {!showCalculator && isTransferCategory && (
+          <div className="mb-5 rounded-[16px] p-4 border border-[rgba(96,165,250,0.25)]"
+            style={{ backgroundColor: "rgba(96,165,250,0.06)" }}>
+            <p className="font-['Inter'] font-semibold text-[10px] text-[#60a5fa] tracking-[2px] uppercase mb-3">TUJUAN TRANSFER</p>
+            <div className="flex gap-2 mb-3">
+              {[{ v: "own_bank", label: "Bank Saya" }, { v: "other_person", label: "Orang Lain" }].map(opt => (
+                <button key={opt.v} type="button" onClick={() => setTransferMode(opt.v as "own_bank" | "other_person")}
+                  className="flex-1 py-2 rounded-full text-[11px] font-bold transition-all"
+                  style={{ backgroundColor: transferMode === opt.v ? "#60a5fa" : "#2d3449", color: transferMode === opt.v ? "#fff" : "#64748b" }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {transferMode === "own_bank" ? (
+              <select value={transferToAccountId} onChange={e => setTransferToAccountId(e.target.value)}
+                className="w-full h-[44px] px-4 rounded-[12px] font-['Inter'] text-[13px] outline-none border"
+                style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }}>
+                <option value="">Pilih rekening tujuan...</option>
+                {bankAccounts.filter(a => a.id !== paymentSource).map(a => (
+                  <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="space-y-2">
+                {contacts.length > 0 && (
+                  <select value={selectedContact} onChange={e => {
+                    setSelectedContact(e.target.value);
+                    const c = contacts.find(c => c.id === e.target.value);
+                    if (c) { setTransferToName(c.name); setTransferToBank(c.bankName); setTransferToNumber(c.accountNumber); }
+                  }}
+                    className="w-full h-[44px] px-4 rounded-[12px] font-['Inter'] text-[13px] outline-none border"
+                    style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }}>
+                    <option value="">Pilih kontak tersimpan...</option>
+                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name} — {c.bankName}</option>)}
+                  </select>
+                )}
+                <input value={transferToName} onChange={e => setTransferToName(e.target.value)}
+                  placeholder="Nama penerima *"
+                  className="w-full h-[44px] px-4 rounded-[12px] font-['Inter'] text-[13px] outline-none border"
+                  style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={transferToBank} onChange={e => setTransferToBank(e.target.value)}
+                    placeholder="Bank tujuan"
+                    className="h-[44px] px-3 rounded-[12px] font-['Inter'] text-[12px] outline-none border"
+                    style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }} />
+                  <input value={transferToNumber} onChange={e => setTransferToNumber(e.target.value)}
+                    placeholder="No. rekening"
+                    className="h-[44px] px-3 rounded-[12px] font-['Inter'] text-[12px] outline-none border"
+                    style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)", color: "var(--app-text)" }} />
+                </div>
+              </div>
+            )}
+          </div>
+          )}
 
-function Container19() {
-  return (
-    <div className="col-1 content-stretch flex flex-col gap-[32px] items-start justify-self-stretch relative row-1 self-start shrink-0" data-name="Container">
-      <AmountInputViewGoPayStyleRoundedBox />
-      <CategoryChipsModernVisualDistinction />
-      <NotesInputField />
-    </div>
-  );
-}
+          {/* ── BUKTI PEMBAYARAN (muncul jika pakai bank atau kategori Transfer) ── */}
+          {!showCalculator && (isBankSource || isTransferCategory) && (
+          <div className="mb-5">
+            <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-2">BUKTI PEMBAYARAN</p>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => setReceiptImage(ev.target?.result as string);
+              reader.readAsDataURL(file);
+            }} />
+            {receiptImage ? (
+              <div className="relative">
+                <img src={receiptImage} alt="receipt" className="w-full rounded-[12px] max-h-[120px] object-cover" />
+                <button type="button" onClick={() => setReceiptImage(undefined)}
+                  className="absolute top-2 right-2 size-7 rounded-full bg-black/60 flex items-center justify-center text-white font-bold text-[14px]">×</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className="w-full h-[44px] rounded-[12px] border-dashed border-2 flex items-center justify-center gap-2 font-['Inter'] text-[12px]"
+                style={{ borderColor: "rgba(255,255,255,0.1)", color: "#64748b" }}>
+                📷 Ambil / Pilih Foto Struk
+              </button>
+            )}
+          </div>
+          )}
 
-function CalcButtons() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-1 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.98px] pr-[25.99px] py-[17.75px] relative rounded-[16px] row-1 self-start shrink-0" data-name="Calc Buttons">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[11.53px]">
-        <p className="leading-[28px]">7</p>
-      </div>
-    </div>
-  );
-}
+          {/* Calc Toggle */}
+          <div className="flex justify-center mb-4">
+            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); 
+              setShowCalculator(p => !p);
+              setShowCatDropdown(false);
+            }}
+              className="flex items-center gap-2 px-5 py-3 rounded-full transition-all active:scale-95"
+              style={{ backgroundColor: showCalculator ? "rgba(0,209,139,0.15)" : "rgba(45,52,73,0.5)", border: showCalculator ? "1px solid rgba(0,209,139,0.4)" : "1px solid rgba(255,255,255,0.08)" }}>
+              <span className="text-[16px]">{showCalculator ? "🔢" : "🧮"}</span>
+              <span className="font-['Inter'] font-semibold text-[13px]" style={{ color: showCalculator ? "#00d18b" : "#94a3b8" }}>
+                {showCalculator ? "Sembunyikan Kalkulator" : "Tampilkan Kalkulator"}
+              </span>
+            </button>
+          </div>
 
-function Button5() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-2 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.34px] pr-[25.35px] py-[17.75px] relative rounded-[16px] row-1 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[12.81px]">
-        <p className="leading-[28px]">8</p>
-      </div>
-    </div>
-  );
-}
+          {/* Calculator */}
+          {showCalculator && (
+            <div className="rounded-[24px] border p-4 mb-5" style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {calcButtons.flat().map((btn, i) => {
+                  const isOp = ["÷","×","−","+"].includes(btn); const isClear = btn === "AC";
+                  const isBackspace = btn === "⌫";
+                  const isActive = isOp && operator === btn && waitingForSecond;
+                  return (
+                    <button key={i} type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleCalcPress(btn); }}
+                      className="flex items-center justify-center rounded-[14px] h-[54px] transition-all active:scale-90"
+                      style={{ backgroundColor: isActive ? "#00d18b" : isOp ? "#2d3449" : isClear ? "rgba(255,180,171,0.1)" : isBackspace ? "rgba(251,191,36,0.1)" : "rgba(45,52,73,0.5)", border: isOp ? "1px solid rgba(0,209,139,0.2)" : isClear ? "1px solid rgba(255,180,171,0.2)" : isBackspace ? "1px solid rgba(251,191,36,0.2)" : "1px solid rgba(255,255,255,0.05)" }}>
+                      <span className="font-['Inter'] font-semibold" style={{ color: isActive ? "#060E20" : isOp ? "#00d18b" : isClear ? "#ffb4ab" : isBackspace ? "#fbbf24" : "#dae2fd", fontSize: isOp ? "22px" : "18px" }}>{btn}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleBackspace(); }}
+                  className="h-[54px] rounded-[14px] flex items-center justify-center active:scale-95" style={{ backgroundColor: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)" }}>
+                  <span className="font-['Inter'] font-semibold text-[22px] text-[#fbbf24]">⌫</span>
+                </button>
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleEquals(); }}
+                  className="h-[54px] rounded-[14px] flex items-center justify-center active:scale-95" style={{ backgroundColor: "rgba(0,209,139,0.1)", border: "1px solid rgba(0,209,139,0.3)" }}>
+                  <span className="font-['Inter'] font-semibold text-[22px] text-[#00d18b]">=</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-function Button6() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-3 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.34px] pr-[25.36px] py-[17.75px] relative rounded-[16px] row-1 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[12.8px]">
-        <p className="leading-[28px]">9</p>
-      </div>
-    </div>
-  );
-}
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 rounded-[16px] bg-[#ffb4ab]/15 border border-[#ffb4ab]/30 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <span className="text-[18px]">⚠️</span>
+              <p className="font-['Inter'] font-bold text-[13px] text-[#ffb4ab]">{error}</p>
+            </div>
+          )}
 
-function Button7() {
-  return (
-    <div className="bg-[#2d3449] col-4 content-stretch flex flex-col items-center justify-center justify-self-start pb-[16.25px] pt-[15.25px] px-[23.67px] relative rounded-[16px] row-1 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(0,209,139,0.2)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[32px] justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[24px] text-center w-[16.16px]">
-        <p className="leading-[32px]">÷</p>
-      </div>
-    </div>
-  );
-}
-
-function Button8() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-1 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.08px] pr-[25.09px] py-[17.75px] relative rounded-[16px] row-2 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[13.33px]">
-        <p className="leading-[28px]">4</p>
-      </div>
-    </div>
-  );
-}
-
-function Button9() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-2 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.63px] pr-[25.62px] py-[17.75px] relative rounded-[16px] row-2 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[12.25px]">
-        <p className="leading-[28px]">5</p>
-      </div>
-    </div>
-  );
-}
-
-function Button10() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-3 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.34px] pr-[25.36px] py-[17.75px] relative rounded-[16px] row-2 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[12.8px]">
-        <p className="leading-[28px]">6</p>
-      </div>
-    </div>
-  );
-}
-
-function Button11() {
-  return (
-    <div className="bg-[#2d3449] col-4 content-stretch flex flex-col items-center justify-center justify-self-start pb-[16.25px] pt-[15.25px] px-[23.67px] relative rounded-[16px] row-2 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(0,209,139,0.2)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[32px] justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[24px] text-center w-[16.16px]">
-        <p className="leading-[32px]">×</p>
-      </div>
-    </div>
-  );
-}
-
-function Button12() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-1 content-stretch flex flex-col items-center justify-center justify-self-start pl-[27.52px] pr-[27.51px] py-[17.75px] relative rounded-[16px] row-3 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[8.47px]">
-        <p className="leading-[28px]">1</p>
-      </div>
-    </div>
-  );
-}
-
-function Button13() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-2 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.52px] pr-[25.51px] py-[17.75px] relative rounded-[16px] row-3 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[12.47px]">
-        <p className="leading-[28px]">2</p>
-      </div>
-    </div>
-  );
-}
-
-function Button14() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-3 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.38px] pr-[25.39px] py-[17.75px] relative rounded-[16px] row-3 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[12.73px]">
-        <p className="leading-[28px]">3</p>
-      </div>
-    </div>
-  );
-}
-
-function Button15() {
-  return (
-    <div className="bg-[#2d3449] col-4 content-stretch flex flex-col items-center justify-center justify-self-start pb-[16.25px] pt-[15.25px] px-[23.67px] relative rounded-[16px] row-3 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(0,209,139,0.2)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[32px] justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[24px] text-center w-[16.16px]">
-        <p className="leading-[32px]">−</p>
-      </div>
-    </div>
-  );
-}
-
-function Button16() {
-  return (
-    <div className="bg-[rgba(255,180,171,0.1)] col-1 content-stretch flex flex-col items-center justify-center justify-self-start pl-[24.38px] pr-[24.37px] py-[17.75px] relative rounded-[16px] row-4 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,180,171,0.2)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#ffb4ab] text-[20px] text-center w-[14.75px]">
-        <p className="leading-[28px]">C</p>
-      </div>
-    </div>
-  );
-}
-
-function Button17() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-2 content-stretch flex flex-col items-center justify-center justify-self-start pl-[25.14px] pr-[25.16px] py-[17.75px] relative rounded-[16px] row-4 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[13.2px]">
-        <p className="leading-[28px]">0</p>
-      </div>
-    </div>
-  );
-}
-
-function Button18() {
-  return (
-    <div className="bg-[rgba(45,52,73,0.5)] col-3 content-stretch flex flex-col items-center justify-center justify-self-start pl-[28.55px] pr-[28.56px] py-[17.75px] relative rounded-[16px] row-4 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#dae2fd] text-[20px] text-center w-[6.39px]">
-        <p className="leading-[28px]">.</p>
-      </div>
-    </div>
-  );
-}
-
-function Button19() {
-  return (
-    <div className="bg-[#2d3449] col-4 content-stretch flex flex-col items-center justify-center justify-self-start pb-[16.25px] pt-[15.25px] px-[23.67px] relative rounded-[16px] row-4 self-start shrink-0" data-name="Button">
-      <div aria-hidden="true" className="absolute border border-[rgba(0,209,139,0.2)] border-solid inset-0 pointer-events-none rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]" />
-      <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[32px] justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[24px] text-center w-[16.16px]">
-        <p className="leading-[32px]">+</p>
-      </div>
-    </div>
-  );
-}
-
-function Container25() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Container">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid gap-x-[10px] gap-y-[10px] grid grid-cols-[repeat(4,minmax(0,1fr))] grid-rows-[____63.50px_63.50px_63.50px_63.50px] relative w-full">
-        <CalcButtons />
-        <Button5 />
-        <Button6 />
-        <Button7 />
-        <Button8 />
-        <Button9 />
-        <Button10 />
-        <Button11 />
-        <Button12 />
-        <Button13 />
-        <Button14 />
-        <Button15 />
-        <Button16 />
-        <Button17 />
-        <Button18 />
-        <Button19 />
-      </div>
-    </div>
-  );
-}
-
-function Button20() {
-  return (
-    <div className="h-[64px] relative rounded-[16px] shrink-0 w-full" data-name="Button">
-      <div aria-hidden="true" className="absolute bg-[rgba(0,209,139,0.1)] bg-clip-padding border-0 border-[transparent] border-solid inset-0 pointer-events-none rounded-[16px]" />
-      <div aria-hidden="true" className="absolute border border-[rgba(0,209,139,0.3)] border-solid inset-0 pointer-events-none rounded-[16px]" />
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-center justify-center pb-[16.5px] pt-[15.5px] px-px relative size-full">
-        <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[32px] justify-center leading-[0] not-italic relative shrink-0 text-[#00d18b] text-[24px] text-center w-[16.16px]">
-          <p className="leading-[32px]">=</p>
-        </div>
-      </div>
-      <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0px_2px_4px_0px_rgba(0,0,0,0.05)]" />
-    </div>
-  );
-}
-
-function CalculatorInterfaceLargeEasyToTapTactileButtons() {
-  return (
-    <div className="bg-[#131b2e] col-1 justify-self-stretch relative rounded-[24px] row-2 self-start shrink-0" data-name="Calculator Interface - Large, Easy-to-tap tactile buttons">
-      <div aria-hidden="true" className="absolute border border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[24px]" />
-      <div className="content-stretch flex flex-col gap-[12px] items-start p-[21px] relative w-full">
-        <div className="absolute bg-[rgba(255,255,255,0)] inset-0 rounded-[24px] shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)]" data-name="Calculator Interface - Large, Easy-to-tap tactile buttons:shadow" />
-        <Container25 />
-        <Button20 />
-      </div>
-    </div>
-  );
-}
-
-function MainLayout() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Main Layout">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid gap-x-[32px] gap-y-[32px] grid grid-cols-[repeat(1,minmax(0,1fr))] grid-rows-[__424px_402px] pb-[8px] relative w-full">
-        <Container19 />
-        <CalculatorInterfaceLargeEasyToTapTactileButtons />
-      </div>
-    </div>
-  );
-}
-
-function ConfirmButtonProminentGoPayEmeraldStyle() {
-  return (
-    <div className="bg-[#00d18b] relative rounded-[16px] shadow-[0px_12px_40px_0px_rgba(0,209,139,0.3)] shrink-0 w-full" data-name="Confirm Button - Prominent GoPay Emerald Style">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-center justify-center py-[20px] relative w-full">
-        <div className="flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold h-[28px] justify-center leading-[0] not-italic relative shrink-0 text-[#060e20] text-[18px] text-center tracking-[1.8px] uppercase w-[255.34px]">
-          <p className="leading-[28px]">CONFIRM TRANSACTION</p>
+          {/* Confirm */}
+          <button type="button" onClick={e => { e.stopPropagation(); 
+            if (barcodeItems.length > 0) handleBarcodeConfirm();
+            else handleConfirm();
+          }}
+            className="w-full rounded-[16px] py-5 shadow-[0px_12px_40px_rgba(0,209,139,0.3)] transition-all active:scale-[0.98]"
+            style={{ backgroundColor: (selectedCategory && (parseFloat(display) > 0 || barcodeItems.length > 0)) ? "#00d18b" : "#2d3449" }}>
+            <span className="font-['Inter'] font-semibold text-[16px] tracking-[1.8px] uppercase" style={{ color: (selectedCategory && (parseFloat(display) > 0 || barcodeItems.length > 0)) ? "#060e20" : "#64748b" }}>
+              {barcodeItems.length > 0 ? `SIMPAN ${barcodeItems.length} ITEM` : "SIMPAN TRANSAKSI"}
+            </span>
+          </button>
         </div>
       </div>
     </div>
   );
-}
+};
 
-function BackgroundHorizontalBorderShadow() {
-  return (
-    <div className="bg-[#1a2233] max-w-[672px] relative rounded-tl-[40px] rounded-tr-[40px] shrink-0 w-full" data-name="Background+HorizontalBorder+Shadow">
-      <div aria-hidden="true" className="absolute border-[rgba(255,255,255,0.05)] border-solid border-t inset-0 pointer-events-none rounded-tl-[40px] rounded-tr-[40px] shadow-[0px_-20px_60px_0px_rgba(0,0,0,0.6)]" />
-      <div className="content-stretch flex flex-col gap-[32px] items-start max-w-[inherit] pb-[48px] pt-[33px] px-[32px] relative w-full">
-        <Container15 />
-        <MainLayout />
-        <ConfirmButtonProminentGoPayEmeraldStyle />
-      </div>
-    </div>
-  );
-}
-
-function InputBottomSheet() {
-  return (
-    <div className="absolute bottom-0 content-stretch flex flex-col items-center left-0 right-0" data-name="Input Bottom Sheet">
-      <SheetHandleMargin />
-      <BackgroundHorizontalBorderShadow />
-    </div>
-  );
-}
-
-export default function TransactionInputWithNotesGoPayInspired() {
-  return (
-    <div className="bg-[#060e20] content-stretch flex flex-col items-start pb-[308px] relative size-full" data-name="Transaction Input with Notes - GoPay Inspired">
-      <MainContentCanvasBlurredBackgroundContent />
-      <OverlayBorderShadowOverlayBlur />
-      <HeaderTopAppBar />
-      <div className="absolute backdrop-blur-[12px] bg-[rgba(6,14,32,0.85)] inset-0" data-name="Overlay Backdrop" />
-      <InputBottomSheet />
-    </div>
-  );
-}
