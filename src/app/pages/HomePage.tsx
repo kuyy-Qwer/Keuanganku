@@ -8,6 +8,7 @@ import {
   type CashFlowPrediction, type KanbanTask, type EmergencyFund, type Transaction
 } from "../store/database";
 import { useLang, t } from "../i18n";
+import usePWAInstall from "../hooks/usePWAInstall";
 
 interface OutletContext { openTransactionModal: () => void; }
 
@@ -48,6 +49,11 @@ export default function HomePage() {
   const [guardianPrediction, setGuardianPrediction] = useState<CashFlowPrediction | null>(null);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showFundsDetail, setShowFundsDetail] = useState(false);
+  
+  // PWA Install Prompt State
+  const { isInstallable, isStandalone, showInstallPrompt } = usePWAInstall();
+  const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
+  const [hasShownPWAInstallPrompt, setHasShownPWAInstallPrompt] = useState(false);
 
   useEffect(() => {
     const updateUnreadCount = () => setUnreadNotifCount(getUnreadNotifCount());
@@ -59,6 +65,27 @@ export default function HomePage() {
       window.removeEventListener("luminary_data_change", updateUnreadCount);
     };
   }, []);
+
+  // Show PWA Install Prompt on HomePage if not installed
+  useEffect(() => {
+    // Check if user has already seen the prompt
+    const hasSeenPrompt = localStorage.getItem('pwa_prompt_shown') === 'true';
+    
+    // Show prompt if:
+    // 1. App is installable (not standalone)
+    // 2. User hasn't seen the prompt yet
+    // 3. Not in standalone mode (already installed)
+    if (isInstallable && !isStandalone && !hasSeenPrompt && !hasShownPWAInstallPrompt) {
+      // Wait 3 seconds after page load to show prompt
+      const timer = setTimeout(() => {
+        setShowPWAInstallPrompt(true);
+        setHasShownPWAInstallPrompt(true);
+        localStorage.setItem('pwa_prompt_shown', 'true');
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isInstallable, isStandalone, hasShownPWAInstallPrompt]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -134,6 +161,20 @@ export default function HomePage() {
 
   const L = (id: string, en: string) => lang === "en" ? en : id;
 
+  // Handle PWA Install
+  const handleInstallPWA = async () => {
+    const installed = await showInstallPrompt();
+    if (installed) {
+      // Track installation success
+      localStorage.setItem('pwa_installed', 'true');
+      setShowPWAInstallPrompt(false);
+    }
+  };
+
+  const handleClosePWAPrompt = () => {
+    setShowPWAInstallPrompt(false);
+  };
+
   const activeFundsTotal = cashBalance + bankAvailableTotal;
 
   const services: { label: string, emoji: string, action: () => void }[] = [
@@ -155,6 +196,65 @@ export default function HomePage() {
       <div className="w-full max-w-[390px] relative">
         <div className="absolute top-[80px] right-[-40px] size-64 bg-[#4edea3]/5 rounded-full blur-[80px] pointer-events-none"
           style={{ transform: `translate3d(0, ${scrollPos * 0.2}px, 0)` }} />
+
+        {/* PWA Install Prompt */}
+        {showPWAInstallPrompt && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] w-[90%] max-w-[360px] animate-in slide-in-from-top-4 duration-300">
+            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-4 shadow-2xl border border-white/20">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <span className="text-2xl">📱</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm">Install Aplikasi Keuangan</h3>
+                    <p className="text-white/80 text-xs">Akses lebih cepat dari home screen</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleClosePWAPrompt}
+                  className="size-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
+                  <span className="text-white text-lg">×</span>
+                </button>
+              </div>
+              
+              <div className="flex gap-2 mb-3">
+                <div className="flex-1 bg-white/10 rounded-xl p-2">
+                  <p className="text-white text-xs font-medium">⚡ Lebih Cepat</p>
+                  <p className="text-white/70 text-[10px]">Buka langsung tanpa browser</p>
+                </div>
+                <div className="flex-1 bg-white/10 rounded-xl p-2">
+                  <p className="text-white text-xs font-medium">📴 Offline</p>
+                  <p className="text-white/70 text-[10px]">Tetap bisa catat transaksi</p>
+                </div>
+                <div className="flex-1 bg-white/10 rounded-xl p-2">
+                  <p className="text-white text-xs font-medium">🔔 Notifikasi</p>
+                  <p className="text-white/70 text-[10px]">Pengingat real-time</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleInstallPWA}
+                  className="flex-1 bg-white text-blue-600 font-bold py-2.5 rounded-xl hover:bg-white/90 transition-colors text-sm"
+                >
+                  Install Sekarang
+                </button>
+                <button
+                  onClick={handleClosePWAPrompt}
+                  className="flex-1 bg-white/10 text-white font-bold py-2.5 rounded-xl hover:bg-white/20 transition-colors text-sm"
+                >
+                  Nanti Saja
+                </button>
+              </div>
+              
+              <p className="text-white/60 text-[10px] text-center mt-2">
+                Gratis • Aman • Tanpa iklan
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className={`sticky top-0 z-[100] backdrop-blur-xl flex items-center justify-between border-b transition-all duration-300 ${isCollapsed ? 'py-3 px-5 mx-4 rounded-b-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.2)] border-x' : 'px-5 pt-10 pb-4 shadow-none'}`}
           style={{ backgroundColor: "var(--app-nav-bg)", borderColor: "var(--app-border)" }}>
