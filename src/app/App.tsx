@@ -9,7 +9,7 @@ import PWAInstallModal from "./components/PWAInstallModal";
 import usePusherBeams from "../hooks/usePusherBeams";
 import useReminderScheduler from "./hooks/useReminderScheduler";
 import usePWAInstall from "./hooks/usePWAInstall";
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 
 function useApplySettings() {
   useEffect(() => {

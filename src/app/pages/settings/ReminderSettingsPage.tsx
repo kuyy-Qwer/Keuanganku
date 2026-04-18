@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSettings, updateSettings } from '../../store/database';
+import { getSettings, saveSettings } from '../../store/database';
 import { sendFinancialNotification } from '../../../lib/pusherNotifications';
 
 const DAYS = [
@@ -100,7 +100,7 @@ export default function ReminderSettingsPage() {
       ...settings,
       reminders: updatedReminders
     };
-    updateSettings(updatedSettings);
+    saveSettings(updatedSettings);
     setSettings(updatedSettings);
   };
 
