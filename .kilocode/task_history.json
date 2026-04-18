@@ -26,8 +26,8 @@
       "disableBatchToolUse": false,
       "maxToolCalls": 5,
       "apiModelId": "gemini-3-pro-preview",
-      "geminiApiKey": "AQ.Ab8RN6IySwRxt0WCwg8K9szq_Nsl7_symsFREHl62mtx7iSVzA",
-      "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjE4OTNkMGZjLTFjODctNGMyYy1hMDRhLTQ1NTY5ZjUwYzNmOCIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJkZXZpY2VBdXRoUmVxdWVzdENvZGUiOiIyOVhOLThHVUYiLCJpYXQiOjE3NzYzMjE4MDUsImV4cCI6MTkzNDAwMTgwNX0.PmiyVukhMm-nAD8P2pr-YIi8HAh0_2MxUgEgeJhlAWk",
+      "geminiApiKey": "[REDACTED]",
+      "kilocodeToken": "[REDACTED]",
       "kilocodeModel": "kilo-auto/balanced"
     }
   }
