@@ -62,15 +62,19 @@ export const router = createBrowserRouter([
     element: <OnboardingWrapper />,
   },
   {
+    path: "/onboarding/splash",
+    element: <OnboardingWrapper />,
+  },
+  {
     path: "/onboarding/welcome",
     element: <OnboardingWrapper />,
   },
   {
-    path: "/onboarding/profile",
+    path: "/onboarding/wallet",
     element: <OnboardingWrapper />,
   },
   {
-    path: "/onboarding/wallet",
+    path: "/onboarding/profile",
     element: <OnboardingWrapper />,
   },
   {

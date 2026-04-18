@@ -1,314 +1,236 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { motion } from 'motion/react';
 import { useLang } from '../../i18n';
-import { getSettings, getUser, saveSettings, saveUser } from '../../store/database';
-import OnboardingShell from './OnboardingShell';
-import { validatePinStrength } from '../../lib/pinSecurity';
+import { getUser, saveUser } from '../../store/database';
 
 export default function ProfileSetupPage() {
   const navigate = useNavigate();
   const lang = useLang();
   const L = (id: string, en: string) => lang === 'en' ? en : id;
   const user = getUser();
-  const settings = getSettings();
 
-  const [profile, setProfile] = useState({
-    fullName: user.fullName || '',
-    email: user.email || '',
-    phone: user.phone || '',
-    birthDate: user.dob || '',
-    gender: '',
-    occupation: user.address || '',
-    language: ((settings.language as 'id' | 'en') || 'id') as 'id' | 'en',
-    pin: '',
-    confirmPin: '',
-  });
+  const [fullName, setFullName] = useState(user.fullName || '');
+  const [email, setEmail] = useState(user.email || '');
+  const [birthDate, setBirthDate] = useState(user.dob || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateForm = () => {
-    const nextErrors: Record<string, string> = {};
-
-    if (!profile.fullName.trim()) nextErrors.fullName = L('Nama lengkap wajib diisi', 'Full name is required');
-    if (!profile.email.trim()) {
-      nextErrors.email = L('Email wajib diisi', 'Email is required');
-    } else if (!/\S+@\S+\.\S+/.test(profile.email)) {
-      nextErrors.email = L('Format email belum valid', 'Email format is invalid');
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!fullName.trim()) e.fullName = L('Nama wajib diisi', 'Name is required');
+    if (!email.trim()) {
+      e.email = L('Email wajib diisi', 'Email is required');
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      e.email = L('Format email tidak valid', 'Invalid email format');
     }
-
-    if (!profile.phone.trim()) {
-      nextErrors.phone = L('Nomor telepon wajib diisi', 'Phone number is required');
-    } else {
-      // Format Indonesia: +62 atau 08xx, minimal 10 digit
-      const cleaned = profile.phone.replace(/[\s-]/g, '');
-      const isValidFormat = /^(\+62|62|0)8\d{8,11}$/.test(cleaned);
-      if (!isValidFormat) {
-        nextErrors.phone = L('Format nomor Indonesia tidak valid (contoh: 08123456789 atau +628123456789)', 'Invalid Indonesian phone format (example: 08123456789 or +628123456789)');
-      }
-    }
-
-    if (!profile.birthDate) nextErrors.birthDate = L('Tanggal lahir wajib diisi', 'Birth date is required');
-    if (!profile.gender) nextErrors.gender = L('Pilih jenis kelamin terlebih dahulu', 'Please choose a gender');
-    const pinError = validatePinStrength(profile.pin, L);
-    if (pinError) nextErrors.pin = pinError;
-    if (profile.confirmPin !== profile.pin) {
-      nextErrors.confirmPin = L('Konfirmasi PIN belum cocok', 'PIN confirmation does not match');
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setProfile((current) => ({ ...current, [field]: value }));
-    if (errors[field]) {
-      setErrors((current) => ({ ...current, [field]: '' }));
-    }
+    if (!birthDate) e.birthDate = L('Tanggal lahir wajib diisi', 'Birth date is required');
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleNext = () => {
-    if (!validateForm()) return;
-
+    if (!validate()) return;
     saveUser({
-      fullName: profile.fullName.trim(),
-      email: profile.email.trim(),
-      phone: profile.phone.trim(),
-      dob: profile.birthDate,
-      address: profile.occupation.trim(),
+      fullName: fullName.trim(),
+      email: email.trim(),
+      dob: birthDate,
       memberSince: user.memberSince || new Date().getFullYear(),
-      pin: profile.pin,
     });
-    saveSettings({ language: profile.language });
-
-    localStorage.setItem('user_profile', JSON.stringify(profile));
-    localStorage.setItem('onboarding_step', 'wallet');
-    navigate('/onboarding/wallet');
+    localStorage.setItem('user_profile', JSON.stringify({ fullName: fullName.trim(), email: email.trim(), birthDate }));
+    localStorage.setItem('onboarding_step', 'tutorial');
+    navigate('/onboarding/tutorial');
   };
 
-  const fieldClass = 'w-full rounded-[20px] border px-4 py-3 text-sm outline-none transition-all';
+  const inputClass = 'w-full rounded-[18px] border px-4 py-3.5 text-sm outline-none transition-all';
 
   return (
-    <OnboardingShell
-      title={L('Profil Anda', 'Your profile')}
-      subtitle={L('Lengkapi data inti agar aplikasi bisa menyesuaikan bahasa, identitas, dan pengalaman awal Anda.', 'Complete the core details so the app can tailor language, identity, and your first experience.')}
-      step={2}
-      totalSteps={4}
-      onBack={() => {
-        // Hapus flag terms agar OnboardingWrapper tidak redirect balik ke profile
-        localStorage.removeItem('onboarding_terms_accepted');
-        localStorage.setItem('onboarding_step', 'welcome');
-        navigate('/');
-      }}
-      footer={(
-        <button
-          onClick={handleNext}
-          className="w-full rounded-2xl py-4 font-bold text-base btn-green green-shadow transition-all"
-        >
-          {L('Simpan profil dan lanjut', 'Save profile and continue')}
-        </button>
-      )}
+    <div
+      className="relative min-h-screen overflow-hidden flex flex-col"
+      style={{ background: 'var(--app-bg)' }}
     >
-      <div className="space-y-4 pb-2">
-        <div className="rounded-[28px] border p-5" style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--app-card2)' }}>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--app-text2)' }}>
-                {L('Tujuan', 'Goal')}
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text)' }}>
-                {L('Biar ringkasan akun dan pengaturan awal langsung pas.', 'So your account summary and initial settings feel right from the start.')}
-              </p>
+      {/* Background orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div className="absolute -left-16 top-0 h-52 w-52 rounded-full blur-3xl"
+          style={{ background: 'rgba(78,222,163,0.18)' }}
+          animate={{ x: [0, 10, 0], y: [0, 14, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute right-[-60px] top-32 h-44 w-44 rounded-full blur-3xl"
+          style={{ background: 'rgba(0,180,162,0.14)' }}
+          animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }} />
+      </div>
+
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[440px] flex-col px-5 pb-6 pt-10">
+
+        {/* Back */}
+        <button
+          onClick={() => navigate('/onboarding/wallet')}
+          className="mb-6 flex h-10 w-10 items-center justify-center rounded-full border self-start"
+          style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Progress */}
+        <div className="mb-6 flex items-center gap-2">
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} className="h-1.5 flex-1 rounded-full overflow-hidden"
+              style={{ backgroundColor: 'rgba(78,222,163,0.12)' }}>
+              {s <= 3 && (
+                <motion.div className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #4edea3, #00b4a2)' }}
+                  initial={{ width: 0 }} animate={{ width: '100%' }}
+                  transition={{ duration: 0.4, delay: s * 0.1 }} />
+              )}
             </div>
-            <div className="rounded-[22px] p-4" style={{ backgroundColor: 'var(--app-card2)' }}>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--app-text2)' }}>
-                {L('Catatan', 'Note')}
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text)' }}>
-                {L('Anda masih bisa mengubah data ini nanti dari menu akun.', 'You can still edit this later from the account menu.')}
-              </p>
-            </div>
-          </div>
+          ))}
+          <span className="text-xs font-semibold ml-1" style={{ color: 'var(--app-text2)' }}>3/4</span>
         </div>
 
-        <div className="rounded-[28px] border p-5" style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.14) 0%, rgba(18,185,129,0.04) 100%)', borderColor: 'rgba(78,222,163,0.22)' }}>
-          <div className="mb-3 flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[16px] text-lg" style={{ backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              {'🔐'}
-            </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>{L('Keamanan akun sejak awal', 'Account security from the start')}</p>
-              <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--app-text2)' }}>
-                {L('Buat PIN 6 digit Anda sekarang. Kami menolak PIN yang terlalu mudah ditebak seperti angka berulang atau berurutan.', 'Create your 6-digit PIN now. We reject PINs that are too easy to guess, such as repeated or sequential numbers.')}
-              </p>
-            </div>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-6 text-center"
+        >
+          <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-[20px]"
+            style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.2), rgba(0,180,162,0.1))', border: '1px solid rgba(78,222,163,0.25)' }}>
+            <span className="text-3xl">👤</span>
           </div>
-        </div>
+          <h2 className="font-['Plus_Jakarta_Sans'] font-black text-[26px] mb-2" style={{ color: 'var(--app-text)' }}>
+            {L('Identitas Dasar', 'Basic Identity')}
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text2)' }}>
+            {L('Hanya 3 informasi. Selesai dalam 1 menit.', 'Only 3 details. Done in 1 minute.')}
+          </p>
+        </motion.div>
 
-        <div className="rounded-[28px] border p-5" style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}>
-          <div className="space-y-4">
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="rounded-[24px] p-5 mb-4"
+          style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}
+        >
+          <div className="space-y-5">
+            {/* Nama */}
             <div>
-              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Nama lengkap', 'Full name')} *</label>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ backgroundColor: '#4edea3', color: '#083626' }}>1</div>
+                <label className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>
+                  {L('Nama Panggilan / Lengkap', 'Nickname / Full Name')} *
+                </label>
+              </div>
               <input
                 type="text"
-                value={profile.fullName}
-                onChange={(e) => handleInputChange('fullName', e.target.value)}
-                className={fieldClass}
-                style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.fullName ? '#ef4444' : 'var(--app-border)' }}
-                placeholder={L('Masukkan nama lengkap Anda', 'Enter your full name')}
+                value={fullName}
+                onChange={(e) => { setFullName(e.target.value); setErrors(p => ({ ...p, fullName: '' })); }}
+                className={inputClass}
+                style={{
+                  backgroundColor: 'var(--app-card2)',
+                  color: 'var(--app-text)',
+                  borderColor: errors.fullName ? '#ef4444' : 'var(--app-border)',
+                }}
+                placeholder={L('Untuk greeting di Dashboard', 'For greeting in Dashboard')}
               />
-              {errors.fullName ? <p className="mt-1 text-xs text-red-500">{errors.fullName}</p> : null}
+              {errors.fullName && <p className="mt-1 text-xs text-red-500">{errors.fullName}</p>}
             </div>
 
+            {/* Email */}
             <div>
-              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Email', 'Email')} *</label>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ backgroundColor: '#4edea3', color: '#083626' }}>2</div>
+                <label className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>
+                  {L('Email', 'Email')} *
+                </label>
+              </div>
               <input
                 type="email"
-                value={profile.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className={fieldClass}
-                style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.email ? '#ef4444' : 'var(--app-border)' }}
-                placeholder={L('nama@email.com', 'name@email.com')}
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setErrors(p => ({ ...p, email: '' })); }}
+                className={inputClass}
+                style={{
+                  backgroundColor: 'var(--app-card2)',
+                  color: 'var(--app-text)',
+                  borderColor: errors.email ? '#ef4444' : 'var(--app-border)',
+                }}
+                placeholder={L('Identitas akun unik', 'Unique account identity')}
               />
-              {errors.email ? <p className="mt-1 text-xs text-red-500">{errors.email}</p> : null}
+              {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Nomor telepon', 'Phone number')} *</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium select-none" style={{ color: 'var(--app-text2)' }}>+62</span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={profile.phone.startsWith('+62') ? profile.phone.slice(3).replace(/^0/, '') : profile.phone.startsWith('62') ? profile.phone.slice(2) : profile.phone.startsWith('0') ? profile.phone.slice(1) : profile.phone}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
-                      handleInputChange('phone', '+62' + digits);
-                    }}
-                    className={fieldClass}
-                    style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.phone ? '#ef4444' : 'var(--app-border)', paddingLeft: '52px' }}
-                    placeholder="8123456789"
-                  />
-                </div>
-                {errors.phone
-                  ? <p className="mt-1 text-xs text-red-500">{errors.phone}</p>
-                  : <p className="mt-1 text-xs" style={{ color: 'var(--app-text2)' }}>{L('Contoh: 8123456789 (tanpa 0 di depan)', 'Example: 8123456789 (without leading 0)')}</p>
-                }
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Tanggal lahir', 'Birth date')} *</label>
-                <input
-                  type="date"
-                  value={profile.birthDate}
-                  onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                  className={fieldClass}
-                  style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.birthDate ? '#ef4444' : 'var(--app-border)' }}
-                  max={new Date().toISOString().split('T')[0]}
-                />
-                {errors.birthDate ? <p className="mt-1 text-xs text-red-500">{errors.birthDate}</p> : null}
-              </div>
-            </div>
-
+            {/* Tanggal Lahir */}
             <div>
-              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Jenis kelamin', 'Gender')} *</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'male', label: L('Laki-laki', 'Male') },
-                  { value: 'female', label: L('Perempuan', 'Female') },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleInputChange('gender', option.value)}
-                    className="rounded-[20px] border px-4 py-3 text-sm font-semibold transition-all"
-                    style={{
-                      backgroundColor: profile.gender === option.value ? 'rgba(78, 222, 163, 0.12)' : 'var(--app-card2)',
-                      color: profile.gender === option.value ? '#169b6d' : 'var(--app-text)',
-                      borderColor: profile.gender === option.value ? '#4edea3' : 'var(--app-border)',
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ backgroundColor: '#4edea3', color: '#083626' }}>3</div>
+                <label className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>
+                  {L('Tanggal Lahir', 'Birth Date')} *
+                </label>
               </div>
-              {errors.gender ? <p className="mt-1 text-xs text-red-500">{errors.gender}</p> : null}
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Bahasa aplikasi', 'App language')}</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { value: 'id', label: 'Bahasa Indonesia', badge: 'ID' },
-                  { value: 'en', label: 'English', badge: 'EN' },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleInputChange('language', option.value)}
-                    className="rounded-[20px] border px-4 py-3 text-left transition-all"
-                    style={{
-                      backgroundColor: profile.language === option.value ? 'rgba(78, 222, 163, 0.12)' : 'var(--app-card2)',
-                      color: 'var(--app-text)',
-                      borderColor: profile.language === option.value ? '#4edea3' : 'var(--app-border)',
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: 'rgba(78, 222, 163, 0.16)', color: '#169b6d' }}>
-                        {option.badge}
-                      </span>
-                      <span className="text-sm font-semibold">{option.label}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Pekerjaan', 'Occupation')}</label>
               <input
-                type="text"
-                value={profile.occupation}
-                onChange={(e) => handleInputChange('occupation', e.target.value)}
-                className={fieldClass}
-                style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: 'var(--app-border)' }}
-                placeholder={L('Contoh: Software Engineer', 'Example: Software Engineer')}
+                type="date"
+                value={birthDate}
+                onChange={(e) => { setBirthDate(e.target.value); setErrors(p => ({ ...p, birthDate: '' })); }}
+                className={inputClass}
+                style={{
+                  backgroundColor: 'var(--app-card2)',
+                  color: 'var(--app-text)',
+                  borderColor: errors.birthDate ? '#ef4444' : 'var(--app-border)',
+                }}
+                max={new Date().toISOString().split('T')[0]}
               />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('PIN 6 digit', '6-digit PIN')} *</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={profile.pin}
-                  onChange={(e) => handleInputChange('pin', e.target.value.replace(/\D/g, ''))}
-                  className={fieldClass}
-                  style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.pin ? '#ef4444' : 'var(--app-border)' }}
-                  placeholder="••••••"
-                />
-                {errors.pin ? <p className="mt-1 text-xs text-red-500">{errors.pin}</p> : null}
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Konfirmasi PIN', 'Confirm PIN')} *</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={profile.confirmPin}
-                  onChange={(e) => handleInputChange('confirmPin', e.target.value.replace(/\D/g, ''))}
-                  className={fieldClass}
-                  style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.confirmPin ? '#ef4444' : 'var(--app-border)' }}
-                  placeholder="••••••"
-                />
-                {errors.confirmPin ? <p className="mt-1 text-xs text-red-500">{errors.confirmPin}</p> : null}
-              </div>
+              {errors.birthDate && <p className="mt-1 text-xs text-red-500">{errors.birthDate}</p>}
+              <p className="mt-1.5 text-xs" style={{ color: 'var(--app-text2)' }}>
+                {L('Untuk ucapan ulang tahun & analisis keuangan.', 'For birthday greetings & financial analysis.')}
+              </p>
             </div>
           </div>
-        </div>
+        </motion.div>
+
+        {/* Note */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-[18px] p-4 mb-4 flex items-start gap-2"
+          style={{ backgroundColor: 'rgba(78,222,163,0.07)', border: '1px solid rgba(78,222,163,0.15)' }}
+        >
+          <span className="text-sm shrink-0">💡</span>
+          <p className="text-xs leading-relaxed" style={{ color: 'var(--app-text2)' }}>
+            {L('Data lain (pekerjaan, telepon, PIN) bisa dilengkapi nanti di pengaturan profil.', 'Other data (occupation, phone, PIN) can be added later in profile settings.')}
+          </p>
+        </motion.div>
+
+        <div className="flex-1" />
+
+        {/* CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-[24px] border p-4"
+          style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}
+        >
+          <button
+            onClick={handleNext}
+            className="w-full rounded-[20px] py-4 font-bold text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, #4edea3, #00b4a2)',
+              color: '#083626',
+              boxShadow: '0 12px 32px rgba(78,222,163,0.3)',
+            }}
+          >
+            {L('Lanjut ke Mission →', 'Continue to Mission →')}
+          </button>
+        </motion.div>
       </div>
-    </OnboardingShell>
+    </div>
   );
 }

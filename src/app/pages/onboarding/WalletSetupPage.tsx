@@ -1,68 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLang } from '../../i18n';
 import { addBankAccount, setCashWalletBalance } from '../../store/database';
-import OnboardingShell from './OnboardingShell';
 
 export default function WalletSetupPage() {
   const navigate = useNavigate();
   const lang = useLang();
   const L = (id: string, en: string) => lang === 'en' ? en : id;
 
-  const [walletData, setWalletData] = useState({
-    cashBalance: '',
-    bankName: '',
-    bankAccountNumber: '',
-    bankAccountName: '',
-  });
+  const [revealed, setRevealed] = useState(false);
+  const [cashBalance, setCashBalance] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateForm = () => {
-    const nextErrors: Record<string, string> = {};
+  // Tunggu 5 detik baru tampilkan form
+  useEffect(() => {
+    const t = setTimeout(() => setRevealed(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
 
-    if (!walletData.cashBalance.trim()) {
-      nextErrors.cashBalance = L('Saldo cash wajib diisi', 'Cash balance is required');
-    } else if (Number(walletData.cashBalance) < 0) {
-      nextErrors.cashBalance = L('Saldo cash tidak boleh minus', 'Cash balance cannot be negative');
-    }
-
-    if (walletData.bankName.trim()) {
-      if (!walletData.bankAccountNumber.trim()) {
-        nextErrors.bankAccountNumber = L('Nomor rekening wajib diisi jika nama bank diisi', 'Account number is required when bank name is filled');
-      }
-      if (!walletData.bankAccountName.trim()) {
-        nextErrors.bankAccountName = L('Nama pemilik wajib diisi jika bank dipakai', 'Account holder name is required when bank is used');
-      }
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setWalletData((current) => ({ ...current, [field]: value }));
-    if (errors[field]) {
-      setErrors((current) => ({ ...current, [field]: '' }));
-    }
-  };
-
-  const handleCashBalanceChange = (value: string) => {
-    handleInputChange('cashBalance', value.replace(/[^\d]/g, ''));
-  };
-
-  const formatCurrency = (value: string) => value ? Number(value).toLocaleString('id-ID') : '';
+  const formatCurrency = (v: string) => (v ? Number(v).toLocaleString('id-ID') : '');
+  const parseCurrency = (v: string) => v.replace(/[^\d]/g, '');
 
   const handleNext = () => {
-    if (!validateForm()) return;
+    const nextErrors: Record<string, string> = {};
+    if (bankName.trim()) {
+      if (!bankAccountNumber.trim()) nextErrors.bankAccountNumber = L('Nomor rekening wajib diisi', 'Account number is required');
+      if (!bankAccountName.trim()) nextErrors.bankAccountName = L('Nama pemilik wajib diisi', 'Account holder name is required');
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
-    const initialCash = Number(walletData.cashBalance || '0');
+    const initialCash = Number(cashBalance || '0');
     setCashWalletBalance(initialCash);
 
-    if (walletData.bankName.trim()) {
+    if (bankName.trim()) {
       addBankAccount({
-        bankName: walletData.bankName.trim(),
-        accountNumber: walletData.bankAccountNumber.trim(),
-        ownerName: walletData.bankAccountName.trim(),
+        bankName: bankName.trim(),
+        accountNumber: bankAccountNumber.trim(),
+        ownerName: bankAccountName.trim(),
         type: 'Tabungan',
         color: '#10B981',
         balance: 0,
@@ -71,141 +50,262 @@ export default function WalletSetupPage() {
 
     localStorage.setItem('wallet_setup', JSON.stringify({
       cashBalance: initialCash,
-      bank: walletData.bankName.trim() ? {
-        name: walletData.bankName.trim(),
-        accountNumber: walletData.bankAccountNumber.trim(),
-        accountName: walletData.bankAccountName.trim(),
-      } : null,
+      bank: bankName.trim() ? { name: bankName.trim(), accountNumber: bankAccountNumber.trim(), accountName: bankAccountName.trim() } : null,
       createdAt: new Date().toISOString(),
     }));
-    localStorage.setItem('onboarding_step', 'tutorial');
-    navigate('/onboarding/tutorial');
+    localStorage.setItem('onboarding_step', 'profile');
+    navigate('/onboarding/profile');
   };
 
+  const quickAmounts = ['50000', '100000', '500000', '1000000'];
+
   return (
-    <OnboardingShell
-      title={L('Atur dompet awal', 'Set up your starting wallet')}
-      subtitle={L('Masukkan saldo cash awal dan rekening bank utama supaya dashboard pertama Anda langsung terisi.', 'Enter your starting cash and main bank account so your first dashboard already has context.')}
-      step={3}
-      totalSteps={4}
-      onBack={() => navigate('/onboarding/profile')}
-      footer={(
-        <button
-          onClick={handleNext}
-          className="w-full rounded-[24px] py-4 font-semibold text-[#083626] shadow-[0_18px_40px_rgba(78,222,163,0.28)] transition-all"
-          style={{ backgroundColor: '#4edea3' }}
-        >
-          {L('Simpan dompet dan lanjut', 'Save wallet and continue')}
-        </button>
-      )}
+    <div
+      className="relative min-h-screen overflow-hidden flex flex-col"
+      style={{ background: 'var(--app-bg)' }}
     >
-      <div className="space-y-4 pb-2">
-        <div className="rounded-[28px] border p-5" style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.16) 0%, rgba(78,222,163,0.04) 100%)', borderColor: 'rgba(78,222,163,0.24)' }}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-[22px] p-4" style={{ backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--app-text2)' }}>{L('Cash', 'Cash')}</p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text)' }}>{L('Dipakai untuk saldo tunai harian.', 'Used for your daily cash balance.')}</p>
+      {/* Background orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div className="absolute -left-16 top-0 h-52 w-52 rounded-full blur-3xl"
+          style={{ background: 'rgba(78,222,163,0.18)' }}
+          animate={{ x: [0, 10, 0], y: [0, 14, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute right-[-60px] top-32 h-44 w-44 rounded-full blur-3xl"
+          style={{ background: 'rgba(0,180,162,0.14)' }}
+          animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }} />
+      </div>
+
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[440px] flex-col px-5 pb-6 pt-10">
+
+        {/* Back */}
+        <button
+          onClick={() => navigate('/onboarding/welcome')}
+          className="mb-6 flex h-10 w-10 items-center justify-center rounded-full border self-start"
+          style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Progress indicator */}
+        <div className="mb-6 flex items-center gap-2">
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} className="h-1.5 flex-1 rounded-full overflow-hidden"
+              style={{ backgroundColor: 'rgba(78,222,163,0.12)' }}>
+              {s <= 2 && (
+                <motion.div className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #4edea3, #00b4a2)' }}
+                  initial={{ width: 0 }} animate={{ width: '100%' }}
+                  transition={{ duration: 0.4, delay: s * 0.1 }} />
+              )}
             </div>
-            <div className="rounded-[22px] p-4" style={{ backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--app-text2)' }}>{L('Bank', 'Bank')}</p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text)' }}>{L('Opsional, tapi membantu saat mulai simulasi rekening.', 'Optional, but useful when you start simulating bank accounts.')}</p>
-            </div>
-            <div className="rounded-[22px] p-4" style={{ backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--app-text2)' }}>{L('Fleksibel', 'Flexible')}</p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text)' }}>{L('Semua data ini bisa diubah lagi setelah onboarding selesai.', 'All of this can still be edited after onboarding.')}</p>
-            </div>
-          </div>
+          ))}
+          <span className="text-xs font-semibold ml-1" style={{ color: 'var(--app-text2)' }}>2/4</span>
         </div>
 
-        <div className="rounded-[28px] border p-5" style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}>
-          <div className="space-y-5">
-            <div>
-              <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Saldo cash awal', 'Initial cash balance')} *</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--app-text2)' }}>Rp</span>
-                <input
-                  type="text"
-                  value={formatCurrency(walletData.cashBalance)}
-                  onChange={(e) => handleCashBalanceChange(e.target.value)}
-                  className="w-full rounded-[20px] border py-3 pl-12 pr-4 text-sm outline-none transition-all"
-                  style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.cashBalance ? '#ef4444' : 'var(--app-border)' }}
-                  placeholder="0"
-                />
-              </div>
-              {errors.cashBalance ? <p className="mt-1 text-xs text-red-500">{errors.cashBalance}</p> : null}
-              <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--app-text2)' }}>
-                {L('Ini akan dipakai sebagai saldo tunai awal pada dashboard Anda.', 'This becomes the starting cash balance on your dashboard.')}
-              </p>
-            </div>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-6 text-center"
+        >
+          <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-[20px]"
+            style={{ background: 'linear-gradient(135deg, #4edea3, #00b4a2)', boxShadow: '0 12px 32px rgba(78,222,163,0.3)' }}>
+            <span className="text-3xl">💰</span>
+          </div>
+          <h2 className="font-['Plus_Jakarta_Sans'] font-black text-[26px] mb-2" style={{ color: 'var(--app-text)' }}>
+            {L('Mulai dengan Uang Anda', 'Start with Your Money')}
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--app-text2)' }}>
+            {L('Masukkan saldo awal agar dashboard langsung hidup dengan data Anda.', 'Enter your starting balance so your dashboard comes alive immediately.')}
+          </p>
+        </motion.div>
 
-            <div className="rounded-[24px] p-4" style={{ backgroundColor: 'var(--app-card2)' }}>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>{L('Rekening bank utama', 'Primary bank account')}</p>
-                  <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--app-text2)' }}>
-                    {L('Bagian ini opsional. Isi jika Anda ingin langsung punya akun bank saat pertama masuk app.', 'This section is optional. Fill it if you want a bank account ready from your first app session.')}
-                  </p>
+        {/* Countdown / Form reveal */}
+        <AnimatePresence mode="wait">
+          {!revealed ? (
+            <motion.div
+              key="countdown"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-center justify-center flex-1 gap-6"
+            >
+              <div className="rounded-[28px] p-8 text-center w-full"
+                style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.1), rgba(0,180,162,0.06))', border: '1px solid rgba(78,222,163,0.2)' }}>
+                <p className="text-sm font-semibold mb-4" style={{ color: 'var(--app-text2)' }}>
+                  {L('Menyiapkan dompet Anda...', 'Preparing your wallet...')}
+                </p>
+                <div className="flex justify-center gap-3 mb-4">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div key={i} className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: '#4edea3' }}
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.25 }} />
+                  ))}
                 </div>
-                <span className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ backgroundColor: 'rgba(78,222,163,0.14)', color: '#169b6d' }}>
-                  {L('Opsional', 'Optional')}
-                </span>
+                <p className="text-xs" style={{ color: 'var(--app-text2)' }}>
+                  {L('Sebentar lagi...', 'Just a moment...')}
+                </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Nama bank', 'Bank name')}</label>
+              {/* Ownership psychology card */}
+              <div className="rounded-[24px] p-5 w-full"
+                style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl shrink-0">💡</span>
+                  <div>
+                    <p className="text-sm font-semibold mb-1" style={{ color: 'var(--app-text)' }}>
+                      {L('Psikologi Kepemilikan', 'Ownership Psychology')}
+                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--app-text2)' }}>
+                      {L('Saat Anda memasukkan saldo, Anda langsung merasa "aplikasi ini berguna untuk uang saya". Dashboard akan langsung hidup!', 'When you enter your balance, you immediately feel "this app is useful for my money". Your dashboard comes alive!')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col flex-1 gap-4"
+            >
+              {/* Cash input */}
+              <div className="rounded-[24px] p-5"
+                style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.1), rgba(0,180,162,0.05))', border: '1px solid rgba(78,222,163,0.2)' }}>
+                <p className="text-sm font-semibold mb-3 text-center" style={{ color: 'var(--app-text)' }}>
+                  💵 {L('Saldo Cash Awal', 'Starting Cash Balance')}
+                </p>
+
+                {/* Big input */}
+                <div className="relative mb-3">
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-lg" style={{ color: 'var(--app-text2)' }}>Rp</span>
                   <input
                     type="text"
-                    value={walletData.bankName}
-                    onChange={(e) => handleInputChange('bankName', e.target.value)}
-                    className="w-full rounded-[20px] border px-4 py-3 text-sm outline-none transition-all"
-                    style={{ backgroundColor: 'var(--app-card)', color: 'var(--app-text)', borderColor: 'var(--app-border)' }}
-                    placeholder={L('Contoh: BCA, Mandiri, BNI', 'Example: BCA, Mandiri, BNI')}
+                    inputMode="numeric"
+                    value={formatCurrency(cashBalance)}
+                    onChange={(e) => setCashBalance(parseCurrency(e.target.value))}
+                    className="w-full rounded-[20px] border py-4 pl-14 pr-5 font-bold outline-none transition-all text-center"
+                    style={{
+                      backgroundColor: 'var(--app-card)',
+                      color: 'var(--app-text)',
+                      borderColor: 'rgba(78,222,163,0.3)',
+                      fontSize: '26px',
+                      letterSpacing: '0.5px',
+                    }}
+                    placeholder="0"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Nomor rekening', 'Account number')}</label>
-                    <input
-                      type="text"
-                      value={walletData.bankAccountNumber}
-                      onChange={(e) => handleInputChange('bankAccountNumber', e.target.value)}
-                      className="w-full rounded-[20px] border px-4 py-3 text-sm outline-none transition-all"
-                      style={{ backgroundColor: 'var(--app-card)', color: 'var(--app-text)', borderColor: errors.bankAccountNumber ? '#ef4444' : 'var(--app-border)' }}
-                      placeholder="1234567890"
-                      disabled={!walletData.bankName.trim()}
-                    />
-                    {errors.bankAccountNumber ? <p className="mt-1 text-xs text-red-500">{errors.bankAccountNumber}</p> : null}
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--app-text)' }}>{L('Nama pemilik', 'Account holder')}</label>
-                    <input
-                      type="text"
-                      value={walletData.bankAccountName}
-                      onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
-                      className="w-full rounded-[20px] border px-4 py-3 text-sm outline-none transition-all"
-                      style={{ backgroundColor: 'var(--app-card)', color: 'var(--app-text)', borderColor: errors.bankAccountName ? '#ef4444' : 'var(--app-border)' }}
-                      placeholder={L('Nama sesuai rekening', 'Name on the account')}
-                      disabled={!walletData.bankName.trim()}
-                    />
-                    {errors.bankAccountName ? <p className="mt-1 text-xs text-red-500">{errors.bankAccountName}</p> : null}
-                  </div>
+                {/* Quick amounts */}
+                <div className="grid grid-cols-4 gap-2">
+                  {quickAmounts.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCashBalance(amt)}
+                      className="rounded-[14px] border py-2 text-xs font-semibold transition-all hover:scale-[1.03] active:scale-[0.97]"
+                      style={{
+                        backgroundColor: cashBalance === amt ? 'rgba(78,222,163,0.15)' : 'var(--app-card)',
+                        color: cashBalance === amt ? '#169b6d' : 'var(--app-text)',
+                        borderColor: cashBalance === amt ? '#4edea3' : 'var(--app-border)',
+                      }}
+                    >
+                      {Number(amt) >= 1000000 ? `${Number(amt) / 1000000}jt` : `${Number(amt) / 1000}rb`}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-[24px] border p-4" style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}>
-              <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--app-text)' }}>{L('Yang akan terjadi setelah ini', 'What happens next')}</p>
-              <div className="space-y-2 text-sm leading-relaxed" style={{ color: 'var(--app-text2)' }}>
-                <p>{L('Saldo awal akan langsung muncul di dashboard dan wallet.', 'Your opening balance will appear immediately on the dashboard and wallet.')}</p>
-                <p>{L('Jika Anda mengisi bank, akun bank baru akan dibuat dengan saldo awal 0 supaya bisa dipakai untuk simulasi berikutnya.', 'If you add a bank, a new bank account will be created with a starting balance of 0 for later simulations.')}</p>
+              {/* Bank section */}
+              <div className="rounded-[24px] p-5"
+                style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--app-text)' }}>
+                    🏦 {L('Rekening Bank', 'Bank Account')}
+                  </p>
+                  <span className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+                    style={{ backgroundColor: 'rgba(78,222,163,0.12)', color: '#169b6d' }}>
+                    {L('Opsional', 'Optional')}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="w-full rounded-[16px] border px-4 py-3 text-sm outline-none"
+                    style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: 'var(--app-border)' }}
+                    placeholder={L('Nama Bank (BCA, Mandiri, BNI...)', 'Bank Name (BCA, Mandiri, BNI...)')}
+                  />
+
+                  <AnimatePresence>
+                    {bankName.trim() && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="grid grid-cols-2 gap-3 overflow-hidden"
+                      >
+                        <div>
+                          <input
+                            type="text"
+                            value={bankAccountNumber}
+                            onChange={(e) => setBankAccountNumber(e.target.value)}
+                            className="w-full rounded-[16px] border px-4 py-3 text-sm outline-none"
+                            style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.bankAccountNumber ? '#ef4444' : 'var(--app-border)' }}
+                            placeholder={L('No. Rekening', 'Account No.')}
+                          />
+                          {errors.bankAccountNumber && <p className="mt-1 text-xs text-red-500">{errors.bankAccountNumber}</p>}
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            value={bankAccountName}
+                            onChange={(e) => setBankAccountName(e.target.value)}
+                            className="w-full rounded-[16px] border px-4 py-3 text-sm outline-none"
+                            style={{ backgroundColor: 'var(--app-card2)', color: 'var(--app-text)', borderColor: errors.bankAccountName ? '#ef4444' : 'var(--app-border)' }}
+                            placeholder={L('Nama Pemilik', 'Account Holder')}
+                          />
+                          {errors.bankAccountName && <p className="mt-1 text-xs text-red-500">{errors.bankAccountName}</p>}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
+
+              <div className="flex-1" />
+
+              {/* CTA */}
+              <div className="rounded-[24px] border p-4"
+                style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}>
+                <button
+                  onClick={handleNext}
+                  className="w-full rounded-[20px] py-4 font-bold text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(135deg, #4edea3, #00b4a2)',
+                    color: '#083626',
+                    boxShadow: '0 12px 32px rgba(78,222,163,0.3)',
+                  }}
+                >
+                  {cashBalance
+                    ? L(`Lanjut dengan Rp${formatCurrency(cashBalance)} →`, `Continue with Rp${formatCurrency(cashBalance)} →`)
+                    : L('Lanjut tanpa saldo →', 'Continue without balance →')}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </OnboardingShell>
+    </div>
   );
 }

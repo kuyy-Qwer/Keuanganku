@@ -92,11 +92,18 @@ export default function TutorialPage() {
 
   const finishOnboarding = (startTour: boolean) => {
     if (startTour) {
-      localStorage.setItem('onboarding_step', 'tutorial');
+      // Give EXP reward for completing tutorial mission
+      const currentExp = parseInt(localStorage.getItem('user_exp') || '0');
+      localStorage.setItem('user_exp', (currentExp + 50).toString());
       localStorage.setItem('onboarding_tour_pending', 'true');
+      localStorage.setItem('mission_completed', 'true');
+      localStorage.setItem('onboarding_completed', 'true');
       navigate('/app');
       return;
     }
+    // Still give some EXP for completing onboarding
+    const currentExp = parseInt(localStorage.getItem('user_exp') || '0');
+    localStorage.setItem('user_exp', (currentExp + 25).toString());
     localStorage.setItem('onboarding_completed', 'true');
     localStorage.removeItem('onboarding_step');
     localStorage.removeItem('onboarding_tour_pending');
@@ -107,19 +114,19 @@ export default function TutorialPage() {
 
   return (
     <OnboardingShell
-      title={L('Pahami fiturnya', 'Understand the features')}
-      subtitle={L('Tap setiap fitur untuk melihat penjelasan lengkapnya.', 'Tap each feature to see its full explanation.')}
+      title={L('Interactive Mission', 'Interactive Mission')}
+      subtitle={L('Selesaikan tur singkat 30 detik untuk mendapatkan +50 EXP pertama kamu!', 'Complete a short 30-second tour to earn your first +50 EXP!')}
       step={4}
       totalSteps={4}
       onBack={() => {
         if (currentStep > 0) {
           goToStep(currentStep - 1);
         } else {
-          navigate('/onboarding/wallet');
+          navigate('/onboarding/profile');
         }
       }}
       onSkip={() => finishOnboarding(false)}
-      skipLabel={L('Lewati', 'Skip')}
+      skipLabel={L('Lewati & Masuk', 'Skip & Enter')}
       footer={(
         <div className="space-y-3">
           {isLastStep ? (
@@ -129,14 +136,14 @@ export default function TutorialPage() {
                 className="w-full rounded-[24px] py-4 font-semibold text-[#083626] shadow-[0_18px_40px_rgba(78,222,163,0.28)] transition-all"
                 style={{ backgroundColor: '#4edea3' }}
               >
-                {L('Masuk dan mulai tur interaktif', 'Enter and start the interactive tour')}
+                {L('🎮 Mulai Mission (+50 EXP)', '🎮 Start Mission (+50 EXP)')}
               </button>
               <button
                 onClick={() => finishOnboarding(false)}
                 className="w-full rounded-[24px] py-3 text-sm font-semibold transition-all"
                 style={{ backgroundColor: 'var(--app-card)', color: 'var(--app-text)', border: '1px solid var(--app-border)' }}
               >
-                {L('Masuk tanpa tur', 'Enter without the tour')}
+                {L('Masuk tanpa mission', 'Enter without mission')}
               </button>
             </>
           ) : (
@@ -145,7 +152,7 @@ export default function TutorialPage() {
               className="w-full rounded-[24px] py-4 font-semibold text-[#083626] shadow-[0_18px_40px_rgba(78,222,163,0.28)] transition-all"
               style={{ backgroundColor: '#4edea3' }}
             >
-              {L('Lanjut ke fitur berikutnya', 'Continue to the next feature')}
+              {L('Lanjutkan Mission', 'Continue Mission')}
             </button>
           )}
           {currentStep > 0 && (
@@ -335,18 +342,41 @@ export default function TutorialPage() {
             })}
           </div>
 
-          {/* Banner siap mulai di bagian bawah card (hanya step terakhir) */}
-          {isLastStep && (
-            <div className="mx-3 mb-3 rounded-[18px] p-4 text-center"
-              style={{ backgroundColor: 'rgba(78,222,163,0.08)', border: '1px solid rgba(78,222,163,0.2)' }}>
-              <p className="font-['Plus_Jakarta_Sans'] text-[15px] font-bold mb-1" style={{ color: 'var(--app-text)' }}>
-                {L('Anda siap mulai! 🎉', 'You are ready to start! 🎉')}
-              </p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--app-text2)' }}>
-                {L('Masuk biasa atau lanjut ke tur interaktif untuk dipandu langsung di aplikasi.', 'Enter normally or start the interactive tour to be guided inside the real app.')}
-              </p>
+          {/* EXP Reward Banner */}
+          <div className="mx-3 mb-3 rounded-[18px] p-4 text-center"
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(78,222,163,0.12), rgba(251,191,36,0.08))',
+              border: '1px solid rgba(78,222,163,0.2)' 
+            }}>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
+                ⭐
+              </div>
+              <div>
+                <p className="font-['Plus_Jakarta_Sans'] text-[15px] font-bold" style={{ color: 'var(--app-text)' }}>
+                  {L('Reward Menunggu!', 'Reward Awaits!')}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--app-text2)' }}>
+                  {L('Selesaikan mission untuk dapatkan EXP', 'Complete mission to earn EXP')}
+                </p>
+              </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-[12px] p-2" style={{ backgroundColor: 'rgba(78,222,163,0.1)' }}>
+                <p className="text-xs font-bold text-green-600">+50 EXP</p>
+                <p className="text-[10px]" style={{ color: 'var(--app-text2)' }}>{L('Selesai Mission', 'Complete Mission')}</p>
+              </div>
+              <div className="rounded-[12px] p-2" style={{ backgroundColor: 'rgba(78,222,163,0.1)' }}>
+                <p className="text-xs font-bold text-green-600">Level Up</p>
+                <p className="text-[10px]" style={{ color: 'var(--app-text2)' }}>{L('Pemula → Aktif', 'Beginner → Active')}</p>
+              </div>
+              <div className="rounded-[12px] p-2" style={{ backgroundColor: 'rgba(78,222,163,0.1)' }}>
+                <p className="text-xs font-bold text-green-600">30 detik</p>
+                <p className="text-[10px]" style={{ color: 'var(--app-text2)' }}>{L('Waktu mission', 'Mission time')}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </OnboardingShell>

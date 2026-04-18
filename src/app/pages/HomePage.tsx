@@ -50,10 +50,8 @@ export default function HomePage() {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showFundsDetail, setShowFundsDetail] = useState(false);
   
-  // PWA Install Prompt State
+  // PWA Install
   const { isInstallable, isStandalone, isIOS, deferredPrompt } = usePWAInstall();
-  const [showPWAInstallPrompt, setShowPWAInstallPrompt] = useState(false);
-  const [hasShownPWAInstallPrompt, setHasShownPWAInstallPrompt] = useState(false);
 
   useEffect(() => {
     const updateUnreadCount = () => setUnreadNotifCount(getUnreadNotifCount());
@@ -66,34 +64,20 @@ export default function HomePage() {
     };
   }, []);
 
-  // Show PWA Install Prompt on HomePage if not installed
-  useEffect(() => {
-    // FOR TESTING: Always show in development
-    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
-    if (isDevelopment) {
-      // Clear localStorage for testing
-      localStorage.removeItem('pwa_prompt_shown');
+  // Handle PWA Install
+  const handleInstallPWA = async () => {
+    if (isIOS) {
+      alert('Untuk install di iPhone/iPad:\n1. Tap ikon Share di browser\n2. Pilih "Add to Home Screen"\n3. Tap "Add"');
+      return;
     }
-    
-    // Check if user has already seen the prompt
-    const hasSeenPrompt = localStorage.getItem('pwa_prompt_shown') === 'true';
-    
-    // Show prompt if:
-    // 1. App is installable (not standalone) OR we're in development
-    // 2. User hasn't seen the prompt yet
-    // 3. Not in standalone mode (already installed)
-    if ((isInstallable || isDevelopment) && !isStandalone && !hasSeenPrompt && !hasShownPWAInstallPrompt) {
-      // Wait 0.5 second after page load to show prompt (for testing)
-      const timer = setTimeout(() => {
-        setShowPWAInstallPrompt(true);
-        setHasShownPWAInstallPrompt(true);
-        localStorage.setItem('pwa_prompt_shown', 'true');
-      }, 500);
-      
-      return () => clearTimeout(timer);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') localStorage.setItem('pwa_installed', 'true');
+    } else {
+      alert('Buka menu browser → "Install app" atau "Add to Home Screen"');
     }
-  }, [isInstallable, isStandalone, hasShownPWAInstallPrompt]);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -169,54 +153,6 @@ export default function HomePage() {
 
   const L = (id: string, en: string) => lang === "en" ? en : id;
 
-  // Handle PWA Install
-  const handleInstallPWA = async () => {
-    try {
-      console.log('Attempting PWA install...');
-      
-      // For iOS, show instructions
-      if (isIOS) {
-        alert('Untuk install di iPhone/iPad:\n1. Tap ikon Share di browser\n2. Pilih "Add to Home Screen"\n3. Tap "Add" di pojok kanan atas');
-        setShowPWAInstallPrompt(false);
-        return;
-      }
-      
-      // For Android/Chrome
-      if (deferredPrompt) {
-        console.log('Showing install prompt...');
-        deferredPrompt.prompt();
-        
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log('Install outcome:', outcome);
-        
-        if (outcome === 'accepted') {
-          console.log('PWA installed successfully');
-          localStorage.setItem('pwa_installed', 'true');
-          setShowPWAInstallPrompt(false);
-          
-          // Show success message
-          alert('Aplikasi berhasil diinstall! Sekarang bisa dibuka dari home screen.');
-        } else {
-          console.log('User dismissed install prompt');
-          // Don't show again for this session
-          setShowPWAInstallPrompt(false);
-        }
-      } else {
-        console.log('No deferred prompt available');
-        // Fallback: show browser instructions
-        alert('Untuk install aplikasi:\n1. Buka menu browser (3 titik)\n2. Pilih "Install app" atau "Add to Home Screen"');
-        setShowPWAInstallPrompt(false);
-      }
-    } catch (error) {
-      console.error('Error installing PWA:', error);
-      alert('Gagal install aplikasi. Coba install manual via menu browser.');
-      setShowPWAInstallPrompt(false);
-    }
-  };
-
-  const handleClosePWAPrompt = () => {
-    setShowPWAInstallPrompt(false);
-  };
 
   const activeFundsTotal = cashBalance + bankAvailableTotal;
 
@@ -239,118 +175,6 @@ export default function HomePage() {
       <div className="w-full max-w-[390px] relative">
         <div className="absolute top-[80px] right-[-40px] size-64 bg-[#4edea3]/5 rounded-full blur-[80px] pointer-events-none"
           style={{ transform: `translate3d(0, ${scrollPos * 0.2}px, 0)` }} />
-
-        {/* PWA Install Modal - POPUP CENTER */}
-        {showPWAInstallPrompt && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="w-full max-w-[360px] animate-in slide-in-from-bottom-4 duration-300">
-              <div className="rounded-3xl overflow-hidden shadow-2xl" style={{ 
-                backgroundColor: 'var(--app-card)',
-                border: '1px solid var(--app-border)'
-              }}>
-                {/* Header */}
-                <div className="p-6 pb-4" style={{ 
-                  background: 'linear-gradient(135deg, #4edea3, #00b4a2)',
-                  borderBottom: '1px solid rgba(255,255,255,0.1)'
-                }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="size-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                        <span className="text-3xl">📱</span>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-xl">Install Aplikasi</h3>
-                        <p className="text-white/90 text-sm">Keuanganku di home screen Anda</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={handleClosePWAPrompt}
-                      className="size-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors backdrop-blur-sm"
-                    >
-                      <span className="text-white text-xl font-bold">×</span>
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Content */}
-                <div className="p-6">
-                  <div className="space-y-4 mb-6">
-                    <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--app-card2)' }}>
-                      <div className="size-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(78,222,163,0.15)' }}>
-                        <span className="text-xl">⚡</span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm" style={{ color: 'var(--app-text)' }}>Akses Instan</p>
-                        <p className="text-xs" style={{ color: 'var(--app-text2)' }}>Buka langsung dari home screen</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--app-card2)' }}>
-                      <div className="size-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(78,222,163,0.15)' }}>
-                        <span className="text-xl">📴</span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm" style={{ color: 'var(--app-text)' }}>Mode Offline</p>
-                        <p className="text-xs" style={{ color: 'var(--app-text2)' }}>Catat transaksi tanpa internet</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--app-card2)' }}>
-                      <div className="size-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(78,222,163,0.15)' }}>
-                        <span className="text-xl">🔔</span>
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm" style={{ color: 'var(--app-text)' }}>Notifikasi</p>
-                        <p className="text-xs" style={{ color: 'var(--app-text2)' }}>Pengingat keuangan real-time</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleInstallPWA}
-                      className="w-full py-3.5 rounded-xl font-bold text-white text-base transition-all active:scale-95 hover:opacity-90"
-                      style={{ 
-                        background: 'linear-gradient(135deg, #4edea3, #00b4a2)',
-                        boxShadow: '0 4px 20px rgba(78,222,163,0.3)'
-                      }}
-                    >
-                      📥 Install Sekarang
-                    </button>
-                    
-                    <button
-                      onClick={handleClosePWAPrompt}
-                      className="w-full py-3.5 rounded-xl font-bold text-base transition-all active:scale-95 border"
-                      style={{ 
-                        color: 'var(--app-text)',
-                        backgroundColor: 'var(--app-card2)',
-                        borderColor: 'var(--app-border)'
-                      }}
-                    >
-                      Nanti Saja
-                    </button>
-                  </div>
-                  
-                  {/* Footer */}
-                  <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--app-border)' }}>
-                    <div className="flex items-center justify-center gap-4 text-xs" style={{ color: 'var(--app-text2)' }}>
-                      <span className="flex items-center gap-1">
-                        <span>🔒</span> Aman
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span>🚫</span> Tanpa Iklan
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span>💯</span> Gratis
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className={`sticky top-0 z-[100] backdrop-blur-xl flex items-center justify-between border-b transition-all duration-300 ${isCollapsed ? 'py-3 px-5 mx-4 rounded-b-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.2)] border-x' : 'px-5 pt-10 pb-4 shadow-none'}`}
           style={{ backgroundColor: "var(--app-nav-bg)", borderColor: "var(--app-border)" }}>
@@ -817,6 +641,36 @@ export default function HomePage() {
                 {L("Lihat semua transaksi →", "View all transactions →")}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── PWA Install Button (bottom of page, only when installable & not standalone) ── */}
+        {(isInstallable || isIOS) && !isStandalone && (
+          <div className="px-5 mb-6">
+            <button
+              onClick={handleInstallPWA}
+              className="w-full rounded-[20px] border py-3.5 flex items-center justify-center gap-3 transition-all active:scale-[0.98] hover:brightness-105"
+              style={{
+                backgroundColor: 'var(--app-card)',
+                borderColor: 'rgba(78,222,163,0.3)',
+              }}
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg"
+                style={{ background: 'linear-gradient(135deg, #4edea3, #00b4a2)' }}>
+                <span className="text-base">📲</span>
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold" style={{ color: 'var(--app-text)' }}>
+                  {L('Install Keuanganku', 'Install Keuanganku')}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--app-text2)' }}>
+                  {L('Akses cepat dari home screen', 'Quick access from home screen')}
+                </p>
+              </div>
+              <svg className="w-4 h-4 ml-auto shrink-0" fill="none" viewBox="0 0 24 24" stroke="#4edea3" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </button>
           </div>
         )}
 

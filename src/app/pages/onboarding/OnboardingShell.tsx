@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useLang } from '../../i18n';
 
 interface OnboardingShellProps {
   title: string;
@@ -24,11 +25,18 @@ export default function OnboardingShell({
   onSkip,
   skipLabel,
 }: OnboardingShellProps) {
+  const lang = useLang();
+  const L = (id: string, en: string) => lang === 'en' ? en : id;
   const progress = Math.max((step / totalSteps) * 100, 0);
 
-  // Scroll ke atas setiap kali step berubah
+  // Scroll ke atas dan haptic feedback setiap kali step berubah
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Haptic feedback untuk mobile
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50); // Getaran halus 50ms
+    }
   }, [step]);
 
   return (
@@ -110,13 +118,22 @@ export default function OnboardingShell({
             </div>
           </div>
 
-          <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(78, 222, 163, 0.1)' }}>
+          <div className="h-2 overflow-hidden rounded-full mb-2" style={{ backgroundColor: 'rgba(78, 222, 163, 0.1)' }}>
             <motion.div
               className="h-full rounded-full progress-bar-green"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
             />
+          </div>
+          
+          {/* Progress Labels */}
+          <div className="flex justify-between text-[10px] font-medium" style={{ color: 'var(--app-text2)' }}>
+            {step === 1 && <span>🎯 {L('Value Prop', 'Value Prop')}</span>}
+            {step === 2 && <span>💰 {L('Ownership', 'Ownership')}</span>}
+            {step === 3 && <span>👤 {L('Identity', 'Identity')}</span>}
+            {step === 4 && <span>🎮 {L('Mission', 'Mission')}</span>}
+            <span>{L('Selesai', 'Complete')}</span>
           </div>
         </motion.div>
 
