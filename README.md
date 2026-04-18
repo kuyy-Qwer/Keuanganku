@@ -7,10 +7,11 @@ Aplikasi keuangan pribadi dengan fitur pencatatan, analisis, dan pengingat untuk
 - Pencatatan transaksi keuangan
 - Analisis pengeluaran dan pemasukan
 - Sistem pencapaian (achievements)
-- Pengingat dan notifikasi
+- Pengingat dan notifikasi via Pusher Beams
 - Mode perlindungan (Guardian Mode)
 - Backup data otomatis
-- PWA (Progressive Web App) support
+- PWA (Progressive Web App) support - bisa diinstall di home screen
+- Offline capability dengan service worker
 
 ## Teknologi
 - React 18 + TypeScript
@@ -18,7 +19,7 @@ Aplikasi keuangan pribadi dengan fitur pencatatan, analisis, dan pengingat untuk
 - Tailwind CSS untuk styling
 - Vercel Analytics untuk tracking
 - Pusher Beams untuk notifikasi push
-- Service Worker untuk offline capability
+- PWA (Progressive Web App) dengan Service Worker untuk offline capability
 
 ## Menjalankan Aplikasi
 
@@ -72,11 +73,32 @@ PUSHER_SECRET_KEY=your_secret_key
 
 ## Analytics
 
-Komponen `<Analytics />` dari `@vercel/analytics/next` sudah ditambahkan ke aplikasi. Analytics akan otomatis:
+Komponen `<Analytics />` dari `@vercel/analytics/react` sudah ditambahkan ke aplikasi. Analytics akan otomatis:
 - Melacak page views
 - Melacak custom events
 - Menyediakan insights pengguna
 - Bekerja tanpa konfigurasi tambahan setelah deployment ke Vercel
+
+## PWA (Progressive Web App)
+
+Aplikasi ini sudah dikonfigurasi sebagai PWA dengan fitur:
+
+### ✅ Sudah Terimplementasi:
+- **Manifest.json** - Konfigurasi lengkap PWA
+- **Service Worker** - Caching, push notifications, offline support
+- **PWA Install Modal** - Prompt install untuk Android/iOS
+- **HTML Meta Tags** - Semua tag PWA di index.html
+- **Offline Capability** - Bisa berjalan tanpa internet
+
+### 🔧 Yang Perlu Dilengkapi:
+- **Icon Files** - Perlu dibuat icon berbagai ukuran (72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512)
+- **Splash Screens** - Untuk iOS devices
+
+### Cara Testing PWA:
+1. Buka aplikasi di Chrome mobile
+2. Should see "Add to Home Screen" prompt
+3. Install dan buka dari home screen
+4. Test offline mode (matikan internet)
 
 ## Struktur Project
 ```
