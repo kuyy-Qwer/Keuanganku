@@ -1360,7 +1360,7 @@ export default function ProfileSettingsGoPayInspired() {
   return (
     <div className="bg-[#0b1326] content-stretch flex flex-col items-start pb-[133px] relative size-full" data-name="Profile & Settings - GoPay Inspired">
       <Main />
-      <BottomNavigationRefined />
+
       <HeaderTopAppBar />
     </div>
   );

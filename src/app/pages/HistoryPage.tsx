@@ -137,7 +137,7 @@ export default function HistoryPage() {
       )}
       <div className="w-full max-w-[390px] px-5 pt-14 space-y-4">
 
-        <h1 className="font-['Plus_Jakarta_Sans'] font-bold text-[18px]"
+        <h1 id="tour-history-header" className="font-['Plus_Jakarta_Sans'] font-bold text-[18px]"
           style={{ color: "var(--app-text)" }}>{t("transactionHistory", lang)}</h1>
 
         {/* Summary Boxes */}
@@ -146,7 +146,7 @@ export default function HistoryPage() {
           const isVertical = totalIncome >= threshold || totalExpense >= threshold || Math.abs(netBalance) >= threshold;
           
           return (
-            <div className={`${isVertical ? "flex flex-col space-y-3" : "grid grid-cols-3 gap-2"}`}>
+            <div id="tour-history-summary" className={`${isVertical ? "flex flex-col space-y-3" : "grid grid-cols-3 gap-2"}`}>
               <div className={`bg-[rgba(78,222,163,0.08)] rounded-[16px] p-3 ${isVertical ? "text-left px-5 py-4" : "text-center"}`}>
                 <p className="text-[9px] font-bold text-[#64748b] uppercase mb-1">{L("Uang Masuk", "Total Income")}</p>
                 <p className={`font-['Plus_Jakarta_Sans'] font-black ${isVertical ? "text-[20px]" : "text-[13px]"} text-[#4edea3]`}>

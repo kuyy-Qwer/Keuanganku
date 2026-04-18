@@ -9,8 +9,6 @@ import {
 } from "../store/database";
 import { useLang, t } from "../i18n";
 
-const imgBg = new URL("../../imports/WealthDashboardGoPayInspired/f84ad6d75c01f5865641dba32416e817dee06ff5.png", import.meta.url).href;
-
 interface OutletContext { openTransactionModal: () => void; }
 
 // ─── Task progress helper ─────────────────────────────────────────
@@ -139,12 +137,12 @@ export default function HomePage() {
   const activeFundsTotal = cashBalance + bankAvailableTotal;
 
   const services: { label: string, emoji: string, action: () => void }[] = [
-    { label: L("Kategori", "Category"), emoji: "🏷️", action: () => navigate("/app/settings/categories") },
-    { label: L("Investasi", "Invest"),  emoji: "📈", action: () => navigate("/app/invest") },
-    { label: L("Kalender", "Calendar"), emoji: "📅", action: () => navigate("/app/calendar") },
-    { label: L("Laporan", "Report"),    emoji: "📊", action: () => navigate("/app/report") },
-    { label: L("Hutang", "Debt"),       emoji: "📒", action: () => navigate("/app/debt") },
-    { label: L("Aset", "Assets"),       emoji: "🏦", action: () => navigate("/app/assets") },
+    { label: L("Kategori", "Category"),   emoji: "🏷️", action: () => navigate("/app/settings/categories") },
+    { label: L("Disiplin", "Discipline"), emoji: "⚖️", action: () => navigate("/app/discipline") },
+    { label: L("Kalender", "Calendar"),   emoji: "📅", action: () => navigate("/app/calendar") },
+    { label: L("Laporan", "Report"),      emoji: "📊", action: () => navigate("/app/report") },
+    { label: L("Hutang", "Debt"),         emoji: "📒", action: () => navigate("/app/debt") },
+    { label: L("Aset", "Assets"),         emoji: "🏦", action: () => navigate("/app/assets") },
     { label: L("Dana Darurat", "Emergency Fund"), emoji: "🚨", action: () => navigate("/app/emergency-funds") },
     { label: L("Simulasi Bank", "Bank Simulation"), emoji: "🏧", action: () => navigate("/app/bank-simulation") },
   ];
@@ -199,12 +197,13 @@ export default function HomePage() {
         </div>
 
         <div className="px-5 mt-6 mb-6">
-          <div className="relative rounded-[28px] overflow-hidden shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.6)] border border-white/5 transition-all clickable group">
+          <div id="tour-balance-card" className="relative rounded-[28px] overflow-hidden shadow-[0px_12px_32px_-8px_rgba(4,180,162,0.35)] border border-white/10 transition-all clickable group">
             <div className="absolute inset-0 bg-gradient-to-br from-[#4edea3] to-[#04b4a2]" />
-            <img src={imgBg} alt="" className="absolute inset-0 w-[120%] h-[120%] object-cover mix-blend-overlay opacity-30 pointer-events-none group-hover:scale-110 transition-transform duration-700"
-              style={{ transform: `translate3d(-5%, ${-5 + (scrollPos * 0.05)}%, 0)` }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} 
-            />
+            {/* Subtle geometric glow orbs instead of image overlay */}
+            <div className="absolute top-[-40px] right-[-40px] size-48 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)" }} />
+            <div className="absolute bottom-[-30px] left-[-30px] size-36 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(circle, rgba(0,56,36,0.15) 0%, transparent 65%)" }} />
             <div className="relative p-6 min-h-[180px] flex flex-col justify-between z-10">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
@@ -257,7 +256,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {showFundsDetail && (
+              {showFundsDetail && activeFundsTotal > 0 && (
                 <div className="grid grid-cols-2 gap-2 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2">
                     <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">💵 Cash</p>
@@ -305,13 +304,23 @@ export default function HomePage() {
                   transition-all duration-200 active:scale-[0.97] hover:brightness-110
                   hover:shadow-[0_8px_24px_rgba(239,68,68,0.25)] active:shadow-none
                   ${guardianPrediction.riskLevel === "critical"
-                    ? "bg-gradient-to-br from-red-500/20 to-red-600/10 border-red-500/30"
+                    ? "border-red-500/40"
                     : guardianPrediction.riskLevel === "danger"
-                    ? "bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-orange-500/30"
-                    : "bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-amber-500/30"
+                    ? "border-orange-500/40"
+                    : "border-amber-500/40"
                   }`}
-                style={{ WebkitTapHighlightColor: "transparent" }}
+                style={{
+                  backgroundColor: "var(--app-card)",
+                  WebkitTapHighlightColor: "transparent",
+                }}
               >
+                {/* Color accent strip on left */}
+                <div className="absolute top-0 left-0 bottom-0 w-1 rounded-l-[20px]"
+                  style={{
+                    backgroundColor: guardianPrediction.riskLevel === "critical" ? "#ef4444"
+                      : guardianPrediction.riskLevel === "danger" ? "#f97316"
+                      : "#f59e0b"
+                  }} />
                 {/* Pulse ring saat protection mode */}
                 {guardianPrediction.protectionMode && (
                   <span className="absolute top-3 right-3 flex size-2.5">
@@ -319,34 +328,39 @@ export default function HomePage() {
                     <span className="relative inline-flex rounded-full size-2.5 bg-red-500" />
                   </span>
                 )}
-                <div className="flex items-start gap-3">
-                  <div className="size-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <div className="flex items-start gap-3 pl-2">
+                  <div className="size-10 rounded-full flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: "var(--app-card2)" }}>
                     {guardianPrediction.protectionMode ? "🛡️" : "⚠️"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px] text-white">
+                      <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px]" style={{ color: "var(--app-text)" }}>
                         {guardianPrediction.protectionMode
                           ? L("Mode Proteksi Aktif", "Protection Mode Active")
                           : L("Peringatan Risiko", "Risk Warning")}
                       </p>
                       {guardianPrediction.protectionMode && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/30 text-red-300">AKTIF</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                          style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
+                          AKTIF
+                        </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-white/80 leading-relaxed">{guardianPrediction.message}</p>
-                    <p className="text-[10px] text-white/50 mt-2">{guardianPrediction.recommendation}</p>
+                    <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-text2)" }}>{guardianPrediction.message}</p>
+                    <p className="text-[10px] mt-2" style={{ color: "var(--app-text2)", opacity: 0.7 }}>{guardianPrediction.recommendation}</p>
                     {guardianPrediction.affectedCategories.length > 0 && (
-                      <p className="text-[10px] text-white/60 mt-1">
+                      <p className="text-[10px] mt-1" style={{ color: "var(--app-text2)", opacity: 0.8 }}>
                         ⚠️ {L("Kategori Terbatas", "Limited Categories")}: {guardianPrediction.affectedCategories.join(", ")}
                       </p>
                     )}
                     {/* Tap hint */}
                     <div className="flex items-center gap-1 mt-2.5">
-                      <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                        style={{ color: "var(--app-text2)", opacity: 0.5 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
-                      <span className="text-[10px] text-white/40 font-medium">
+                      <span className="text-[10px] font-medium" style={{ color: "var(--app-text2)", opacity: 0.5 }}>
                         {lang === "en" ? "Tap for full analysis" : "Ketuk untuk analisis lengkap"}
                       </span>
                     </div>
@@ -358,13 +372,31 @@ export default function HomePage() {
 
         {insights.length > 0 && (
            <div className="px-5 mb-6">
-              <div className="bg-gradient-to-br from-[#1a2740] to-[#131b2e] rounded-[24px] p-5 border border-white/5 shadow-lg relative overflow-hidden group">
+              <div className="rounded-[24px] p-5 border shadow-lg relative overflow-hidden"
+                style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
                  <div className="flex items-center gap-3 mb-3">
-                    <div className="size-8 rounded-full bg-[#4edea3]/20 flex items-center justify-center"><span className="text-[16px]">💡</span></div>
-                    <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-white">Insight Pengeluaran</h4>
+                    <div className="size-8 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "rgba(78,222,163,0.15)" }}>
+                      <span className="text-[16px]">💡</span>
+                    </div>
+                    <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-[13px]" style={{ color: "var(--app-text)" }}>
+                      {L("Insight Pengeluaran", "Spending Insights")}
+                    </h4>
                  </div>
-                 <div className="space-y-3">{insights.map((insight, i) => <p key={i} className="text-[11px] text-[#dae2fd] leading-relaxed italic">" {insight} "</p>)}</div>
-                 <div className="mt-4 flex justify-end"><button onClick={() => navigate("/app/report")} className="text-[10px] font-bold text-[#4edea3] uppercase tracking-widest clickable">Detail Laporan →</button></div>
+                 <div className="space-y-3">
+                   {insights.map((insight, i) => (
+                     <p key={i} className="text-[11px] leading-relaxed italic" style={{ color: "var(--app-text2)" }}>
+                       " {insight} "
+                     </p>
+                   ))}
+                 </div>
+                 <div className="mt-4 flex justify-end">
+                   <button onClick={() => navigate("/app/report")}
+                     className="text-[10px] font-bold uppercase tracking-widest clickable"
+                     style={{ color: "#4edea3" }}>
+                     {L("Detail Laporan →", "Full Report →")}
+                   </button>
+                 </div>
               </div>
            </div>
         )}
@@ -372,7 +404,7 @@ export default function HomePage() {
         <div className="px-5 mb-8">
           <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase mb-4"
             style={{ color: "var(--app-text2)" }}>{t("services", lang)}</p>
-          <div className={`grid ${services.length > 7 ? 'grid-cols-4' : 'grid-cols-4'} gap-2`}>
+          <div id="tour-services" className={`grid ${services.length > 7 ? 'grid-cols-4' : 'grid-cols-4'} gap-2`}>
             {services.map(svc => (
               <button key={svc.label} onClick={svc.action}
                 className="group rounded-[18px] p-3 flex flex-col items-center gap-2 border transition-all duration-200 active:scale-95 hover:scale-105 hover:shadow-[0_8px_24px_rgba(78,222,163,0.18)]"
@@ -550,19 +582,13 @@ export default function HomePage() {
            </div>
         )}
 
-        <div className="px-5 pb-8">
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase"
-              style={{ color: "var(--app-text2)" }}>{t("recent", lang)}</p>
-            <button onClick={() => navigate("/app/history")} className="font-['Inter'] font-semibold text-[11px] text-[#4edea3] clickable">{t("seeAll", lang)}</button>
-          </div>
-          {recentTx.length === 0 ? (
-            <div className="rounded-[20px] p-8 text-center" style={{ backgroundColor: "var(--app-card)" }}>
-              <span className="text-[36px] block mb-3">📝</span>
-              <p className="font-['Plus_Jakarta_Sans'] font-bold text-[15px] mb-1" style={{ color: "var(--app-text)" }}>{t("noTransactions", lang)}</p>
-              <p className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>{t("noTransactionsDesc", lang)}</p>
+        {recentTx.length > 0 && (
+          <div id="tour-recent-transactions" className="px-5 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] tracking-[2px] uppercase"
+                style={{ color: "var(--app-text2)" }}>{t("recentTransactions", lang)}</p>
+              <button onClick={() => navigate("/app/history")} className="text-[#4edea3] text-[11px] font-bold clickable">{t("seeAll", lang)}</button>
             </div>
-          ) : (
             <div className="space-y-2">
               {recentTx.slice(0, 3).map((tx, i) => (
                 <div key={tx.id}
@@ -595,8 +621,8 @@ export default function HomePage() {
                 {L("Lihat semua transaksi →", "View all transactions →")}
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Recent Transaction Detail Modal (read-only, no delete) */}
         {selectedRecentTx && (

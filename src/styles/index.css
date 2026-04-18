@@ -1,3 +1,171 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+.shake-anim {
+  animation: shake 0.4s ease;
+}
+
+/* Dynamic theme variables - set by App.tsx */
+:root {
+  --app-bg: #0b1326;
+  --app-card: #131b2e;
+  --app-card2: #1a2740;
+  --app-text: #dae2fd;
+  --app-text2: #94a3b8;
+  --app-border: rgba(255,255,255,0.05);
+  --app-nav-bg: rgba(11,19,38,0.95);
+}
+
+/* Utility classes that use theme vars */
+.app-bg    { background-color: var(--app-bg); }
+.app-card  { background-color: var(--app-card); }
+.app-text  { color: var(--app-text); }
+.app-text2 { color: var(--app-text2); }
+
+/* Fix browser autofill color override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--app-card) inset !important;
+  -webkit-text-fill-color: var(--app-text) !important;
+  caret-color: var(--app-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+@keyframes taskSlideIn {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Light theme overrides untuk elemen hardcoded ── */
+[data-theme="light"] {
+  /* Card backgrounds yang hardcoded */
+  --tw-bg-opacity: 1;
+}
+
+/* Hardcoded dark backgrounds → light equivalents */
+[data-theme="light"] .bg-\[\#0b1326\],
+[data-theme="light"] .bg-\[\#0f1a2e\],
+[data-theme="light"] .bg-\[\#131b2e\] { background-color: #ffffff !important; }
+
+[data-theme="light"] .bg-\[\#171f33\],
+[data-theme="light"] .bg-\[\#1a2740\],
+[data-theme="light"] .bg-\[\#2d3449\] { background-color: #e6f5ef !important; }
+
+/* Hardcoded white text → dark text */
+[data-theme="light"] .text-white { color: #0d2b1f !important; }
+
+/* Hardcoded muted text */
+[data-theme="light"] .text-\[\#64748b\],
+[data-theme="light"] .text-\[\#94a3b8\] { color: #4a7c65 !important; }
+
+/* Borders */
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/20 { border-color: rgba(0,100,60,0.12) !important; }
+
+/* Subtle backgrounds */
+[data-theme="light"] .bg-white\/5  { background-color: rgba(0,100,60,0.05) !important; }
+[data-theme="light"] .bg-white\/\[0\.03\] { background-color: rgba(0,100,60,0.03) !important; }
+[data-theme="light"] .bg-white\/\[0\.07\] { background-color: rgba(0,100,60,0.07) !important; }
+
+/* Hover states */
+[data-theme="light"] .hover\:bg-white\/5:hover  { background-color: rgba(0,100,60,0.06) !important; }
+[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(0,100,60,0.1) !important; }
+
+/* Nav bar */
+[data-theme="light"] .border-white\/10 { border-color: rgba(0,100,60,0.12) !important; }
+
+/* Light theme navbar shadow */
+[data-theme="light"] .shadow-\[0_20px_50px_rgba\(0\,0\,0\,0\.5\)\] {
+  box-shadow: 0 8px 32px rgba(0,100,60,0.12), 0 2px 8px rgba(0,100,60,0.08) !important;
+}
+
+/* Active nav icon — ganti gradient gelap ke hijau terang */
+[data-theme="light"] .bg-gradient-to-br.from-\[\#10B981\].to-\[\#059669\] {
+  background: linear-gradient(135deg, #4edea3, #10b981) !important;
+  box-shadow: 0 8px 20px rgba(78,222,163,0.35) !important;
+}
+
+/* Nav icon filter untuk tema terang — icon SVG yang pakai #64748B jadi lebih gelap */
+[data-theme="light"] { --nav-icon-filter: brightness(0.4) sepia(1) hue-rotate(100deg) saturate(2); }
+
+/* Input fields in modals */
+[data-theme="light"] input[style*="background: #0b1326"],
+[data-theme="light"] textarea[style*="background: #0b1326"] {
+  background: #f0faf6 !important;
+  color: #0d2b1f !important;
+  border-color: rgba(0,100,60,0.15) !important;
+}
+
+/* Autofill for light theme */
+[data-theme="light"] input:-webkit-autofill,
+[data-theme="light"] input:-webkit-autofill:hover,
+[data-theme="light"] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0d2b1f !important;
+}
+
+.clickable {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.clickable:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.2);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+.clickable:active {
+  transform: scale(0.96);
+  filter: brightness(0.9);
+}
+
+@keyframes slideInUp {
+  0% { transform: translateY(100%) scale(0.95); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes slideOutDown {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(100%) scale(0.95); opacity: 0; }
+}
+
+.animate-slide-down {
+  animation: slideOutDown 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; backdrop-filter: blur(4px); }
+  to { opacity: 0; backdrop-filter: blur(0px); }
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.35s ease-in forwards;
+}

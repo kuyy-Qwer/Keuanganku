@@ -979,7 +979,7 @@ export default function TransactionTimelineGoPayInspired() {
     <div className="bg-[#0b1326] content-stretch flex flex-col items-start pb-[128px] relative size-full" data-name="Transaction Timeline - GoPay Inspired">
       <MainContent />
       <HeaderTopAppBar />
-      <BottomNavigationRefined />
+
     </div>
   );
 }

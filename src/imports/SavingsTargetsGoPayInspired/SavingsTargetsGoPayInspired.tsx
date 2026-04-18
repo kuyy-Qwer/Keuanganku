@@ -1048,7 +1048,7 @@ export default function SavingsTargetsGoPayInspired() {
     <div className="bg-[#0b1326] content-stretch flex flex-col items-start pb-[128px] relative size-full" data-name="Savings & Targets - GoPay Inspired">
       <MainContent />
       <HeaderTopAppBarSharedComponent />
-      <BottomNavigationRefined />
+
     </div>
   );
 }

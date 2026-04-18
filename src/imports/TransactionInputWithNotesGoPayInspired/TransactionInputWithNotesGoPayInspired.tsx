@@ -13,7 +13,7 @@ import { dispatchNotif } from "../../app/lib/notify";
 import BarcodeScanner from "../../app/components/BarcodeScanner";
 
 interface TransactionInputProps {
-  onClose?: () => void;
+  onClose?: (reason?: "saved" | "dismissed") => void;
 }
 
 type InputMode = "transaksi" | "barcode";
@@ -129,7 +129,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
     });
     playExpenseSound();
     setSaved(true);
-    setTimeout(() => { setSaved(false); onClose?.(); }, 1200);
+    setTimeout(() => { setSaved(false); onClose?.("saved"); }, 1200);
   };
 
   useEffect(() => { setCategories(getCategories()); }, []);
@@ -381,7 +381,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
     else playExpenseSound();
     
     setSaved(true);
-    setTimeout(() => { setSaved(false); onClose?.(); }, 1200);
+    setTimeout(() => { setSaved(false); onClose?.("saved"); }, 1200);
   };
 
   const calcButtons = [["7","8","9","÷"],["4","5","6","×"],["1","2","3","−"],["AC","0",".","+"]];
@@ -405,7 +405,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
 
   return (
     <div className="relative w-full" onClick={e => e.stopPropagation()}>
-      <div className="flex justify-center pt-3 pb-1"><div className="bg-[rgba(51,65,85,0.5)] h-1 rounded-full w-10" /></div>
+      <div className="flex justify-center pt-3 pb-1"><div className="h-1 rounded-full w-10" style={{ backgroundColor: "var(--app-border)" }} /></div>
       <div className="rounded-t-[40px] border-t shadow-[0px_-20px_60px_0px_rgba(0,0,0,0.4)] w-full"
         style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
         <div className="overflow-y-auto max-h-[85vh] px-7 pt-7 pb-10">
@@ -416,7 +416,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
               <h2 className="font-['Plus_Jakarta_Sans'] font-bold text-[22px]" style={{ color: "var(--app-text)" }}>Transaksi Baru</h2>
               <p className="font-['Inter'] text-[13px] mt-0.5" style={{ color: "var(--app-text2)" }}>Catat pergerakan keuangan</p>
             </div>
-            <button type="button" onClick={e => { e.stopPropagation(); onClose?.(); }}
+            <button type="button" onClick={e => { e.stopPropagation(); onClose?.("dismissed"); }}
               className="bg-[rgba(255,255,255,0.05)] flex items-center justify-center rounded-full size-9 hover:bg-[rgba(255,255,255,0.1)]">
               <svg className="size-3" fill="none" viewBox="0 0 14 14"><path d="M13 1L1 13M1 1L13 13" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" /></svg>
             </button>
@@ -426,18 +426,18 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
           <div className="flex gap-2 mb-5">
             <button type="button" onClick={e => { e.stopPropagation(); setTxType("expense"); setSelectedCategory(""); }}
               className="flex-1 py-2.5 rounded-full font-['Inter'] font-semibold text-[13px] transition-all"
-              style={{ backgroundColor: txType === "expense" ? "rgba(255,180,171,0.15)" : "#2d3449", color: txType === "expense" ? "#ffb4ab" : "#64748b", border: txType === "expense" ? "1px solid rgba(255,180,171,0.3)" : "1px solid transparent" }}>
+              style={{ backgroundColor: txType === "expense" ? "rgba(255,180,171,0.15)" : "var(--app-card2)", color: txType === "expense" ? "#ffb4ab" : "var(--app-text2)", border: txType === "expense" ? "1px solid rgba(255,180,171,0.3)" : "1px solid var(--app-border)" }}>
               Pengeluaran
             </button>
             <button type="button" onClick={e => { e.stopPropagation(); setTxType("income"); setSelectedCategory(""); setError(null); }}
               className="flex-1 py-2.5 rounded-full font-['Inter'] font-semibold text-[13px] transition-all"
-              style={{ backgroundColor: txType === "income" ? "rgba(78,222,163,0.15)" : "#2d3449", color: txType === "income" ? "#4edea3" : "#64748b", border: txType === "income" ? "1px solid rgba(78,222,163,0.3)" : "1px solid transparent" }}>
+              style={{ backgroundColor: txType === "income" ? "rgba(78,222,163,0.15)" : "var(--app-card2)", color: txType === "income" ? "#4edea3" : "var(--app-text2)", border: txType === "income" ? "1px solid rgba(78,222,163,0.3)" : "1px solid var(--app-border)" }}>
               Pemasukan
             </button>
           </div>
 
           {/* Amount */}
-          <div className="bg-[rgba(45,52,73,0.4)] relative rounded-[16px] w-full mb-5 border border-[rgba(255,255,255,0.05)]">
+          <div id="tour-tx-amount" className="relative rounded-[16px] w-full mb-3 border" style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
             <div className="absolute top-px bottom-px left-px w-1.5 rounded-l-[14px]" style={{ backgroundColor: txType === "income" ? "#4edea3" : "#ffb4ab" }} />
             <div className="p-5 pl-7">
               <p className="font-['Inter'] font-semibold text-[10px] tracking-[2px] uppercase opacity-80 mb-1.5" style={{ color: txType === "income" ? "#4edea3" : "#ffb4ab" }}>MASUKKAN NOMINAL</p>
@@ -449,19 +449,87 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
                   <input type="text" inputMode="decimal" 
                     value={display === "0" ? "" : formatRupiahInput(display)} 
                     onChange={handleAmountChange} placeholder="0"
-                    className="font-['Plus_Jakarta_Sans'] font-extrabold text-[36px] tracking-[-1px] leading-[40px] bg-transparent outline-none w-full placeholder-[#334155]"
+                    className="font-['Plus_Jakarta_Sans'] font-extrabold text-[36px] tracking-[-1px] leading-[40px] bg-transparent outline-none w-full"
                     style={{ color: "var(--app-text)" }} />
                 )}
               </div>
             </div>
           </div>
 
+          {/* Calc Toggle — directly below amount input */}
+          <div className="flex justify-center mb-5">
+            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); 
+              setShowCalculator(p => !p);
+              setShowCatDropdown(false);
+            }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full transition-all active:scale-95"
+              style={{
+                backgroundColor: showCalculator ? "rgba(0,209,139,0.15)" : "var(--app-card2)",
+                border: showCalculator ? "1px solid rgba(0,209,139,0.4)" : "1px solid var(--app-border)",
+              }}>
+              <span className="text-[15px]">{showCalculator ? "🔢" : "🧮"}</span>
+              <span className="font-['Inter'] font-semibold text-[12px]" style={{ color: showCalculator ? "#00d18b" : "var(--app-text2)" }}>
+                {showCalculator ? "Sembunyikan Kalkulator" : "Tampilkan Kalkulator"}
+              </span>
+            </button>
+          </div>
+
+          {/* Calculator — directly below toggle */}
+          {showCalculator && (
+            <div className="rounded-[24px] border p-4 mb-5" style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {calcButtons.flat().map((btn, i) => {
+                  const isOp = ["÷","×","−","+"].includes(btn); const isClear = btn === "AC";
+                  const isBackspace = btn === "⌫";
+                  const isActive = isOp && operator === btn && waitingForSecond;
+                  return (
+                    <button key={i} type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleCalcPress(btn); }}
+                      className="flex items-center justify-center rounded-[14px] h-[54px] transition-all active:scale-90"
+                      style={{
+                        backgroundColor: isActive ? "#00d18b"
+                          : isOp ? "var(--app-card)"
+                          : isClear ? "rgba(255,100,100,0.1)"
+                          : isBackspace ? "rgba(251,191,36,0.1)"
+                          : "var(--app-card)",
+                        border: isOp ? "1px solid rgba(0,209,139,0.3)"
+                          : isClear ? "1px solid rgba(255,100,100,0.2)"
+                          : isBackspace ? "1px solid rgba(251,191,36,0.2)"
+                          : "1px solid var(--app-border)",
+                      }}>
+                      <span className="font-['Inter'] font-semibold" style={{
+                        color: isActive ? "#060E20"
+                          : isOp ? "#00d18b"
+                          : isClear ? "#ff6464"
+                          : isBackspace ? "#fbbf24"
+                          : "var(--app-text)",
+                        fontSize: isOp ? "22px" : "18px",
+                      }}>{btn}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleBackspace(); }}
+                  className="h-[54px] rounded-[14px] flex items-center justify-center active:scale-95"
+                  style={{ backgroundColor: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)" }}>
+                  <span className="font-['Inter'] font-semibold text-[22px] text-[#fbbf24]">⌫</span>
+                </button>
+                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleEquals(); }}
+                  className="h-[54px] rounded-[14px] flex items-center justify-center active:scale-95"
+                  style={{ backgroundColor: "rgba(0,209,139,0.12)", border: "1px solid rgba(0,209,139,0.35)" }}>
+                  <span className="font-['Inter'] font-semibold text-[22px] text-[#00d18b]">=</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Categories - Dropdown - Hidden when calculator is expanded */}
           {!showCalculator && !isBelanjaBase && belanjaSubMode === "none" && !showMarketplace && (
-          <div className="mb-5">
+          <div id="tour-tx-category" className="mb-5">
             <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-3">PILIH KATEGORI</p>
             <div className="relative">
               <button 
+                id="tour-tx-category-btn"
                 type="button"
                 onClick={() => setShowCatDropdown(!showCatDropdown)}
                 className="w-full h-[48px] px-4 rounded-[12px] flex items-center justify-between text-[13px] font-['Inter']"
@@ -556,7 +624,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
 
           {/* Belanja Sub-Mode Selection */}
           {isBelanjaBase && belanjaSubMode === "none" && !showMarketplace && (
-            <div className="mb-5">
+            <div className="mb-5" data-belanja-sub="true">
               <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase mb-3">PILIH TIPE BELANJA</p>
               <div className="grid grid-cols-2 gap-3">
                 <button type="button"
@@ -600,7 +668,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
 
           {/* Marketplace Selection */}
           {showMarketplace && belanjaSubMode === "online" && (
-            <div className="mb-5">
+            <div className="mb-5" data-marketplace-picker="true">
               <div className="flex items-center justify-between mb-3">
                 <p className="font-['Inter'] font-semibold text-[10px] text-[#64748b] tracking-[2px] uppercase">PILIH MARKETPLACE</p>
                 <button type="button" onClick={() => { setShowMarketplace(false); setBelanjaSubMode("none"); setSelectedCategory("Belanja"); }}
@@ -694,8 +762,8 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
           <button 
             type="button" 
             onClick={() => setShowScanner(true)}
-            className="w-full py-3 rounded-[16px] flex items-center justify-center gap-2 mb-5"
-            style={{ backgroundColor: "#2d3449", border: "1px solid rgba(255,255,255,0.05)" }}>
+            className="w-full py-3 rounded-[16px] flex items-center justify-center gap-2 mb-5 border"
+            style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
             <span className="text-[20px]">📷</span>
             <span className="font-['Inter'] text-[13px]" style={{ color: "var(--app-text)" }}>Scan Barcode / QR</span>
           </button>
@@ -740,13 +808,6 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
                     <optgroup label="Hutang/Piutang">
                       {debtsOptions.map(d => (
                         <option key={d.id} value={`debt:${d.id}`}>🧾 {d.personName} — sisa {formatRupiah(d.remainingAmount)}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {assetsOptions.length > 0 && (
-                    <optgroup label="Aset">
-                      {assetsOptions.map(a => (
-                        <option key={a.id} value={`asset:${a.id}`}>{a.emoji} {a.name}</option>
                       ))}
                     </optgroup>
                   )}
@@ -874,51 +935,6 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
           </div>
           )}
 
-          {/* Calc Toggle */}
-          <div className="flex justify-center mb-4">
-            <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); 
-              setShowCalculator(p => !p);
-              setShowCatDropdown(false);
-            }}
-              className="flex items-center gap-2 px-5 py-3 rounded-full transition-all active:scale-95"
-              style={{ backgroundColor: showCalculator ? "rgba(0,209,139,0.15)" : "rgba(45,52,73,0.5)", border: showCalculator ? "1px solid rgba(0,209,139,0.4)" : "1px solid rgba(255,255,255,0.08)" }}>
-              <span className="text-[16px]">{showCalculator ? "🔢" : "🧮"}</span>
-              <span className="font-['Inter'] font-semibold text-[13px]" style={{ color: showCalculator ? "#00d18b" : "#94a3b8" }}>
-                {showCalculator ? "Sembunyikan Kalkulator" : "Tampilkan Kalkulator"}
-              </span>
-            </button>
-          </div>
-
-          {/* Calculator */}
-          {showCalculator && (
-            <div className="rounded-[24px] border p-4 mb-5" style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                {calcButtons.flat().map((btn, i) => {
-                  const isOp = ["÷","×","−","+"].includes(btn); const isClear = btn === "AC";
-                  const isBackspace = btn === "⌫";
-                  const isActive = isOp && operator === btn && waitingForSecond;
-                  return (
-                    <button key={i} type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleCalcPress(btn); }}
-                      className="flex items-center justify-center rounded-[14px] h-[54px] transition-all active:scale-90"
-                      style={{ backgroundColor: isActive ? "#00d18b" : isOp ? "#2d3449" : isClear ? "rgba(255,180,171,0.1)" : isBackspace ? "rgba(251,191,36,0.1)" : "rgba(45,52,73,0.5)", border: isOp ? "1px solid rgba(0,209,139,0.2)" : isClear ? "1px solid rgba(255,180,171,0.2)" : isBackspace ? "1px solid rgba(251,191,36,0.2)" : "1px solid rgba(255,255,255,0.05)" }}>
-                      <span className="font-['Inter'] font-semibold" style={{ color: isActive ? "#060E20" : isOp ? "#00d18b" : isClear ? "#ffb4ab" : isBackspace ? "#fbbf24" : "#dae2fd", fontSize: isOp ? "22px" : "18px" }}>{btn}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleBackspace(); }}
-                  className="h-[54px] rounded-[14px] flex items-center justify-center active:scale-95" style={{ backgroundColor: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)" }}>
-                  <span className="font-['Inter'] font-semibold text-[22px] text-[#fbbf24]">⌫</span>
-                </button>
-                <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); handleEquals(); }}
-                  className="h-[54px] rounded-[14px] flex items-center justify-center active:scale-95" style={{ backgroundColor: "rgba(0,209,139,0.1)", border: "1px solid rgba(0,209,139,0.3)" }}>
-                  <span className="font-['Inter'] font-semibold text-[22px] text-[#00d18b]">=</span>
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Error Message */}
           {error && (
             <div className="mb-4 p-4 rounded-[16px] bg-[#ffb4ab]/15 border border-[#ffb4ab]/30 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -928,7 +944,7 @@ export default function TransactionInputWithNotesGoPayInspired({ onClose }: Tran
           )}
 
           {/* Confirm */}
-          <button type="button" onClick={e => { e.stopPropagation(); 
+          <button id="tour-tx-save" type="button" onClick={e => { e.stopPropagation(); 
             if (barcodeItems.length > 0) handleBarcodeConfirm();
             else handleConfirm();
           }}
