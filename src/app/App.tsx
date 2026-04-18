@@ -19,12 +19,12 @@ function useApplySettings() {
 
       if (s.theme === "light") {
         root.setAttribute("data-theme", "light");
-        root.style.setProperty("--app-bg",      "#f8fafc");   // putih bersih
-        root.style.setProperty("--app-card",    "#ffffff");
-        root.style.setProperty("--app-card2",   "#f1f5f9");   // abu-abu muda
-        root.style.setProperty("--app-text",    "#1f2937");   // abu tua gelap
-        root.style.setProperty("--app-text2",   "#6b7280");   // abu medium
-        root.style.setProperty("--app-border",  "rgba(0,0,0,0.1)");
+        root.style.setProperty("--app-bg",      "#f8fafc");   // Light background
+        root.style.setProperty("--app-card",    "#ffffff");   // White cards
+        root.style.setProperty("--app-card2",   "#f0fdf4");   // Light green cards
+        root.style.setProperty("--app-text",    "#1f2937");   // Dark text
+        root.style.setProperty("--app-text2",   "#6b7280");   // Gray text
+        root.style.setProperty("--app-border",  "rgba(0, 180, 162, 0.1)"); // Light green border
         root.style.setProperty("--app-nav-bg",  "rgba(248,250,252,0.95)");
       } else {        root.setAttribute("data-theme", "dark");
         root.style.setProperty("--app-bg", "#0b1326");
@@ -32,7 +32,7 @@ function useApplySettings() {
         root.style.setProperty("--app-card2", "#1a2740");
         root.style.setProperty("--app-text", "#dae2fd");
         root.style.setProperty("--app-text2", "#94a3b8");
-        root.style.setProperty("--app-border", "rgba(255,255,255,0.05)");
+        root.style.setProperty("--app-border", "rgba(78, 222, 163, 0.15)"); // Green tint border
         root.style.setProperty("--app-nav-bg", "rgba(11,19,38,0.95)");
       }
 

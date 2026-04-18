@@ -101,8 +101,7 @@ export default function ProfileSetupPage() {
       footer={(
         <button
           onClick={handleNext}
-          className="w-full rounded-[24px] py-4 font-semibold text-[#083626] shadow-[0_18px_40px_rgba(78,222,163,0.28)] transition-all"
-          style={{ backgroundColor: '#4edea3' }}
+          className="w-full rounded-2xl py-4 font-bold text-base btn-green green-shadow transition-all"
         >
           {L('Simpan profil dan lanjut', 'Save profile and continue')}
         </button>

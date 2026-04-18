@@ -36,19 +36,19 @@ export default function OnboardingShell({
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
           className="absolute -left-16 top-0 h-48 w-48 rounded-full blur-3xl"
-          style={{ background: 'rgba(78, 222, 163, 0.16)' }}
+          style={{ background: 'rgba(78, 222, 163, 0.25)' }} /* More visible green */
           animate={{ x: [0, 12, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute right-[-72px] top-28 h-56 w-56 rounded-full blur-3xl"
-          style={{ background: 'rgba(4, 180, 162, 0.12)' }}
+          style={{ background: 'rgba(0, 180, 162, 0.2)' }} /* More visible green */
           animate={{ x: [0, -18, 0], y: [0, 10, 0], scale: [1, 1.06, 1] }}
           transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
         />
         <motion.div
           className="absolute bottom-16 left-1/2 h-52 w-52 -translate-x-1/2 rounded-full blur-3xl"
-          style={{ background: 'rgba(255, 255, 255, 0.08)' }}
+          style={{ background: 'rgba(78, 222, 163, 0.15)' }} /* Green instead of white */
           animate={{ y: [0, -10, 0], scale: [1, 1.04, 1] }}
           transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -90,33 +90,32 @@ export default function OnboardingShell({
         </motion.div>
 
         <motion.div
-          className="mb-5 rounded-[32px] border px-4 py-5 shadow-[0_18px_50px_rgba(0,0,0,0.08)] backdrop-blur-sm"
-          style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}
+          className="mb-5 rounded-[32px] border px-4 py-5 shadow-[0_18px_50px_rgba(78,222,163,0.1)] backdrop-blur-sm green-shadow"
+          style={{ background: 'var(--app-card)', borderColor: 'rgba(78, 222, 163, 0.2)' }}
           initial={{ opacity: 0, y: 16, scale: 0.99 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.34, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="font-['Plus_Jakarta_Sans'] text-[22px] font-bold leading-tight" style={{ color: 'var(--app-text)' }}>
+              <p className="font-['Plus_Jakarta_Sans'] text-[22px] font-bold leading-tight text-green-primary">
                 {title}
               </p>
               <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--app-text2)' }}>
                 {subtitle}
               </p>
             </div>
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] text-sm font-bold shadow-[0_10px_24px_rgba(78,222,163,0.16)]" style={{ backgroundColor: 'rgba(78, 222, 163, 0.16)', color: '#1a9f71' }}>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] text-sm font-bold green-shadow" style={{ backgroundColor: 'rgba(78, 222, 163, 0.25)', color: '#ffffff' }}>
               {step}/{totalSteps}
             </div>
           </div>
 
-          <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--app-card2)' }}>
+          <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(78, 222, 163, 0.1)' }}>
             <motion.div
-              className="h-full rounded-full"
+              className="h-full rounded-full progress-bar-green"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-              style={{ background: 'linear-gradient(90deg, #4edea3 0%, #12b981 100%)' }}
             />
           </div>
         </motion.div>
