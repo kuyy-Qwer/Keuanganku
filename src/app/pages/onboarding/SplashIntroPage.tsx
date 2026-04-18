@@ -13,112 +13,133 @@ export default function SplashIntroPage() {
   }, [navigate]);
 
   return (
+    /* Full-screen, portrait-locked, max 390px centered — feels native on phone */
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #0b1326 0%, #0d1f18 50%, #0b1326 100%)' }}
+      className="fixed inset-0 flex items-center justify-center overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #071a10 0%, #0b2318 45%, #071a10 100%)' }}
     >
-      {/* Animated background orbs */}
+      {/* ── Ambient orbs ── */}
       <motion.div
-        className="absolute rounded-full blur-[120px] pointer-events-none"
-        style={{ width: 320, height: 320, background: 'rgba(78,222,163,0.18)', top: '-60px', left: '-80px' }}
-        animate={{ scale: [1, 1.15, 1], opacity: [0.18, 0.28, 0.18] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 340, height: 340,
+          background: 'radial-gradient(circle, rgba(78,222,163,0.22) 0%, transparent 70%)',
+          top: '-80px', left: '-100px',
+          filter: 'blur(60px)',
+        }}
+        animate={{ scale: [1, 1.18, 1], opacity: [0.22, 0.35, 0.22] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute rounded-full blur-[100px] pointer-events-none"
-        style={{ width: 260, height: 260, background: 'rgba(0,180,162,0.14)', bottom: '-40px', right: '-60px' }}
-        animate={{ scale: [1, 1.1, 1], opacity: [0.14, 0.22, 0.14] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 280, height: 280,
+          background: 'radial-gradient(circle, rgba(0,180,162,0.18) 0%, transparent 70%)',
+          bottom: '-60px', right: '-80px',
+          filter: 'blur(50px)',
+        }}
+        animate={{ scale: [1, 1.12, 1], opacity: [0.18, 0.28, 0.18] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
       />
       <motion.div
-        className="absolute rounded-full blur-[80px] pointer-events-none"
-        style={{ width: 180, height: 180, background: 'rgba(78,222,163,0.1)', top: '40%', right: '10%' }}
-        animate={{ y: [0, -20, 0], opacity: [0.1, 0.18, 0.1] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 200, height: 200,
+          background: 'radial-gradient(circle, rgba(78,222,163,0.12) 0%, transparent 70%)',
+          top: '42%', right: '8%',
+          filter: 'blur(40px)',
+        }}
+        animate={{ y: [0, -24, 0], opacity: [0.12, 0.2, 0.12] }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
       />
 
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center px-8 text-center">
+      {/* ── Content — constrained to phone width ── */}
+      <div className="relative z-10 w-full max-w-[390px] mx-auto flex flex-col items-center justify-center min-h-screen px-8 text-center">
+
         {/* App icon */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.6, y: 20 }}
+          initial={{ opacity: 0, scale: 0.5, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-          className="mb-8"
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+          className="mb-10"
         >
           <div
-            className="w-24 h-24 rounded-[28px] flex items-center justify-center shadow-[0_20px_60px_rgba(78,222,163,0.35)]"
-            style={{ background: 'linear-gradient(135deg, #4edea3, #00b4a2)' }}
+            className="w-[88px] h-[88px] rounded-[26px] flex items-center justify-center mx-auto"
+            style={{
+              background: 'linear-gradient(135deg, #4edea3 0%, #00b4a2 100%)',
+              boxShadow: '0 24px 64px rgba(78,222,163,0.4), 0 0 0 1px rgba(78,222,163,0.2)',
+            }}
           >
-            <span className="text-5xl">💰</span>
+            <span style={{ fontSize: '44px', lineHeight: 1 }}>💰</span>
           </div>
         </motion.div>
 
-        {/* Tagline kecil */}
+        {/* App name */}
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.6 }}
-          className="text-xs font-semibold uppercase tracking-[0.3em] mb-4"
-          style={{ color: 'rgba(78,222,163,0.7)' }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="font-['Plus_Jakarta_Sans'] font-semibold text-xs uppercase tracking-[0.35em] mb-5"
+          style={{ color: 'rgba(78,222,163,0.75)' }}
         >
           Keuanganku
         </motion.p>
 
-        {/* Judul utama */}
+        {/* Main headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="font-['Plus_Jakarta_Sans'] font-black leading-[1.1] mb-5"
-          style={{ fontSize: '38px', color: '#ffffff' }}
+          transition={{ duration: 1, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          className="font-['Plus_Jakarta_Sans'] font-black leading-[1.08] mb-6"
+          style={{ fontSize: '40px', color: '#ffffff', letterSpacing: '-0.5px' }}
         >
           Bangun{' '}
           <span
             style={{
-              background: 'linear-gradient(135deg, #4edea3, #00b4a2)',
+              background: 'linear-gradient(135deg, #4edea3 0%, #00e5c8 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
             }}
           >
             Masa Depan
           </span>
-          {' '}Finansial
+          <br />Finansial
         </motion.h1>
 
         {/* Subtitle */}
         <motion.p
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 1.1 }}
-          className="text-base leading-relaxed max-w-[280px]"
-          style={{ color: 'rgba(218,226,253,0.65)' }}
+          transition={{ duration: 0.7, delay: 1.05 }}
+          className="text-[15px] leading-[1.65] max-w-[260px]"
+          style={{ color: 'rgba(218,226,253,0.6)' }}
         >
           Mulai perjalanan keuangan yang lebih terarah, terencana, dan bermakna.
         </motion.p>
 
-        {/* Progress dots */}
+        {/* Breathing dots */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
-          className="flex gap-2 mt-12"
+          className="flex gap-2.5 mt-14"
         >
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
               className="rounded-full"
-              style={{ backgroundColor: 'rgba(78,222,163,0.4)', width: 6, height: 6 }}
-              animate={{ opacity: [0.4, 1, 0.4], scale: [1, 1.3, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3, ease: 'easeInOut' }}
+              style={{ width: 7, height: 7, backgroundColor: 'rgba(78,222,163,0.45)' }}
+              animate={{ opacity: [0.45, 1, 0.45], scale: [1, 1.35, 1] }}
+              transition={{ duration: 1.3, repeat: Infinity, delay: i * 0.32, ease: 'easeInOut' }}
             />
           ))}
         </motion.div>
       </div>
 
-      {/* Bottom progress bar */}
+      {/* ── Bottom progress bar ── */}
       <motion.div
-        className="absolute bottom-0 left-0 h-1 rounded-full"
+        className="absolute bottom-0 left-0 h-[3px]"
         style={{ background: 'linear-gradient(90deg, #4edea3, #00b4a2)' }}
         initial={{ width: '0%' }}
         animate={{ width: '100%' }}

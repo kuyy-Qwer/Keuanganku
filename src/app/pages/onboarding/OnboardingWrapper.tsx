@@ -8,8 +8,8 @@ import ProfileSetupPage from './ProfileSetupPage';
 import TutorialPage from './TutorialPage';
 import { getBankAccounts, getCashWalletBalance, getUser } from '../../store/database';
 
-// Flow: splash → welcome → wallet → profile → tutorial
-const STEP_ORDER = ['splash', 'welcome', 'wallet', 'profile', 'tutorial'] as const;
+// Flow: splash → welcome → profile → wallet → tutorial
+const STEP_ORDER = ['splash', 'welcome', 'profile', 'wallet', 'tutorial'] as const;
 type StepName = typeof STEP_ORDER[number];
 
 function getRequestedStep(pathname: string): StepName {
@@ -35,9 +35,9 @@ function getResolvedStep(requestedStep: StepName): StepName {
   // Determine max allowed step
   let maxAllowed: StepName = 'splash';
   if (true) maxAllowed = 'welcome'; // splash always accessible
-  if (termsAccepted) maxAllowed = 'wallet';
-  if (termsAccepted && walletSetup) maxAllowed = 'profile';
-  if (termsAccepted && walletSetup && hasProfile) maxAllowed = 'tutorial';
+  if (termsAccepted) maxAllowed = 'profile';
+  if (termsAccepted && hasProfile) maxAllowed = 'wallet';
+  if (termsAccepted && hasProfile && walletSetup) maxAllowed = 'tutorial';
 
   const requestedIndex = STEP_ORDER.indexOf(requestedStep);
   const maxIndex = STEP_ORDER.indexOf(maxAllowed);
@@ -80,8 +80,8 @@ export default function OnboardingWrapper() {
   const renderStep = () => {
     switch (resolvedStep) {
       case 'welcome': return <WelcomePage />;
-      case 'wallet': return <WalletSetupPage />;
       case 'profile': return <ProfileSetupPage />;
+      case 'wallet': return <WalletSetupPage />;
       case 'tutorial': return <TutorialPage />;
       default: return <WelcomePage />;
     }

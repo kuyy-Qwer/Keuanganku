@@ -53,8 +53,8 @@ export default function WalletSetupPage() {
       bank: bankName.trim() ? { name: bankName.trim(), accountNumber: bankAccountNumber.trim(), accountName: bankAccountName.trim() } : null,
       createdAt: new Date().toISOString(),
     }));
-    localStorage.setItem('onboarding_step', 'profile');
-    navigate('/onboarding/profile');
+    localStorage.setItem('onboarding_step', 'tutorial');
+    navigate('/onboarding/tutorial');
   };
 
   const quickAmounts = ['50000', '100000', '500000', '1000000'];
@@ -80,7 +80,7 @@ export default function WalletSetupPage() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/onboarding/welcome')}
+          onClick={() => navigate('/onboarding/profile')}
           className="mb-6 flex h-10 w-10 items-center justify-center rounded-full border self-start"
           style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}
         >
@@ -94,7 +94,7 @@ export default function WalletSetupPage() {
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="h-1.5 flex-1 rounded-full overflow-hidden"
               style={{ backgroundColor: 'rgba(78,222,163,0.12)' }}>
-              {s <= 2 && (
+              {s <= 3 && (
                 <motion.div className="h-full rounded-full"
                   style={{ background: 'linear-gradient(90deg, #4edea3, #00b4a2)' }}
                   initial={{ width: 0 }} animate={{ width: '100%' }}
@@ -102,7 +102,7 @@ export default function WalletSetupPage() {
               )}
             </div>
           ))}
-          <span className="text-xs font-semibold ml-1" style={{ color: 'var(--app-text2)' }}>2/4</span>
+          <span className="text-xs font-semibold ml-1" style={{ color: 'var(--app-text2)' }}>3/4</span>
         </div>
 
         {/* Header */}

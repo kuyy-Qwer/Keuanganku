@@ -37,8 +37,8 @@ export default function ProfileSetupPage() {
       memberSince: user.memberSince || new Date().getFullYear(),
     });
     localStorage.setItem('user_profile', JSON.stringify({ fullName: fullName.trim(), email: email.trim(), birthDate }));
-    localStorage.setItem('onboarding_step', 'tutorial');
-    navigate('/onboarding/tutorial');
+    localStorage.setItem('onboarding_step', 'wallet');
+    navigate('/onboarding/wallet');
   };
 
   const inputClass = 'w-full rounded-[18px] border px-4 py-3.5 text-sm outline-none transition-all';
@@ -64,7 +64,7 @@ export default function ProfileSetupPage() {
 
         {/* Back */}
         <button
-          onClick={() => navigate('/onboarding/wallet')}
+          onClick={() => navigate('/onboarding/welcome')}
           className="mb-6 flex h-10 w-10 items-center justify-center rounded-full border self-start"
           style={{ backgroundColor: 'var(--app-card)', borderColor: 'var(--app-border)' }}
         >
@@ -86,7 +86,7 @@ export default function ProfileSetupPage() {
               )}
             </div>
           ))}
-          <span className="text-xs font-semibold ml-1" style={{ color: 'var(--app-text2)' }}>3/4</span>
+          <span className="text-xs font-semibold ml-1" style={{ color: 'var(--app-text2)' }}>2/4</span>
         </div>
 
         {/* Header */}
@@ -227,7 +227,7 @@ export default function ProfileSetupPage() {
               boxShadow: '0 12px 32px rgba(78,222,163,0.3)',
             }}
           >
-            {L('Lanjut ke Mission →', 'Continue to Mission →')}
+            {L('Lanjut ke Dompet →', 'Continue to Wallet →')}
           </button>
         </motion.div>
       </div>
