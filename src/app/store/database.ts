@@ -75,6 +75,16 @@ export interface LockedSaving {
   history: SavingTopUp[]; // riwayat top-up
 }
 
+export interface ReminderSchedule {
+  id: string;
+  title: string;
+  message: string;
+  time: string; // Format: "HH:MM" (24-hour)
+  days: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  enabled: boolean;
+  lastSent?: string; // ISO timestamp
+}
+
 export interface AppSettings {
   biometricEnabled: boolean;
   language: string;
@@ -92,6 +102,7 @@ export interface AppSettings {
     twoFactor: boolean;
     loginAlerts: boolean;
   };
+  reminders?: ReminderSchedule[];
 }
 
 export interface ChecklistItem {

@@ -32,6 +32,7 @@ import AssetPage from "./pages/AssetPage";
 import BankSimulationPage from "./pages/BankSimulationPage";
 import NotifHistoryPage from "./pages/NotificationsPage";
 import DisciplinePage from "./pages/DisciplinePage";
+import TestPusherPage from "./pages/TestPusherPage";
 
 // Simple 404 fallback
 function NotFound() {
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
       { path: "assets", element: <AssetPage /> },
       { path: "bank-simulation", element: <BankSimulationPage /> },
       { path: "discipline", element: <DisciplinePage /> },
+      { path: "test-pusher", element: <TestPusherPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },

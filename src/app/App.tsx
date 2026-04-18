@@ -135,11 +135,29 @@ function useBackupReminderWatcher() {
   }, []);
 }
 
+// Register service worker untuk notifikasi push
+function useServiceWorkerRegistration() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then((registration) => {
+            console.log('Service Worker registered:', registration);
+          })
+          .catch((error) => {
+            console.error('Service Worker registration failed:', error);
+          });
+      });
+    }
+  }, []);
+}
+
 export default function App() {
   useApplySettings();
   useAchievementWatcher();
   useGuardianWatcher();
   useBackupReminderWatcher();
+  useServiceWorkerRegistration();
   
   // Splash screen — tampil setiap kali app dibuka
   const [showSplash, setShowSplash] = useState(true);

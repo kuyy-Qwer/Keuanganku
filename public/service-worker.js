@@ -1,50 +1,61 @@
-// Service Worker untuk Pusher Beams — background push notifications
-importScripts("https://js.pusher.com/beams/service-worker.js");
+// Service Worker untuk Pusher Beams
+importScripts('https://js.pusher.com/beams/service-worker.js');
 
-// Handle push events yang datang saat app tidak terbuka
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
+self.addEventListener('push', (event) => {
+  const data = event.data?.json();
+  
+  if (data) {
+    const options = {
+      body: data.notification.body,
+      icon: data.notification.icon || '/icon-192.png',
+      badge: '/badge-72.png',
+      vibrate: [200, 100, 200],
+      data: data.notification.data,
+      actions: [
+        {
+          action: 'open',
+          title: 'Buka Aplikasi'
+        },
+        {
+          action: 'dismiss',
+          title: 'Tutup'
+        }
+      ]
+    };
 
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch {
-    payload = { notification: { title: "Luminary", body: event.data.text() } };
+    event.waitUntil(
+      self.registration.showNotification(data.notification.title, options)
+    );
   }
-
-  const { title, body, icon, data } = payload.notification || {};
-
-  const options = {
-    body: body || "",
-    icon: icon || "/icon-192.png",
-    badge: "/icon-192.png",
-    data: data || {},
-    vibrate: [200, 100, 200],
-    requireInteraction: false,
-    tag: "luminary-notif",
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(title || "Luminary", options)
-  );
 });
 
-// Handle notification click — buka atau fokus ke app
-self.addEventListener("notificationclick", (event) => {
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
+  if (event.action === 'open') {
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((windowClients) => {
+          if (windowClients.length > 0) {
+            return windowClients[0].focus();
+          } else {
+            return clients.openWindow('/');
+          }
+        })
+    );
+  }
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Jika app sudah terbuka, fokus ke tab tersebut
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
-          return client.focus();
-        }
-      }
-      // Jika tidak ada tab yang terbuka, buka tab baru
-      if (clients.openWindow) {
-        return clients.openWindow("/app");
-      }
-    })
+    self.registration.pushManager.subscribe(event.oldSubscription.options)
+      .then((subscription) => {
+        // Kirim subscription baru ke server
+        return fetch('/api/push-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(subscription)
+        });
+      })
   );
 });
