@@ -68,20 +68,28 @@ export default function HomePage() {
 
   // Show PWA Install Prompt on HomePage if not installed
   useEffect(() => {
+    // FOR TESTING: Always show in development
+    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isDevelopment) {
+      // Clear localStorage for testing
+      localStorage.removeItem('pwa_prompt_shown');
+    }
+    
     // Check if user has already seen the prompt
     const hasSeenPrompt = localStorage.getItem('pwa_prompt_shown') === 'true';
     
     // Show prompt if:
-    // 1. App is installable (not standalone)
+    // 1. App is installable (not standalone) OR we're in development
     // 2. User hasn't seen the prompt yet
     // 3. Not in standalone mode (already installed)
-    if (isInstallable && !isStandalone && !hasSeenPrompt && !hasShownPWAInstallPrompt) {
-      // Wait 3 seconds after page load to show prompt
+    if ((isInstallable || isDevelopment) && !isStandalone && !hasSeenPrompt && !hasShownPWAInstallPrompt) {
+      // Wait 0.5 second after page load to show prompt (for testing)
       const timer = setTimeout(() => {
         setShowPWAInstallPrompt(true);
         setHasShownPWAInstallPrompt(true);
         localStorage.setItem('pwa_prompt_shown', 'true');
-      }, 3000);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
@@ -197,61 +205,66 @@ export default function HomePage() {
         <div className="absolute top-[80px] right-[-40px] size-64 bg-[#4edea3]/5 rounded-full blur-[80px] pointer-events-none"
           style={{ transform: `translate3d(0, ${scrollPos * 0.2}px, 0)` }} />
 
-        {/* PWA Install Prompt */}
+        {/* PWA Install Prompt - BANNER BESAR */}
         {showPWAInstallPrompt && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] w-[90%] max-w-[360px] animate-in slide-in-from-top-4 duration-300">
-            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-4 shadow-2xl border border-white/20">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-white/20 flex items-center justify-center">
-                    <span className="text-2xl">📱</span>
+          <div className="fixed top-0 left-0 right-0 z-[9999] animate-in slide-in-from-top-4 duration-300">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 shadow-lg border-b border-white/20">
+              <div className="max-w-[390px] mx-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="size-12 rounded-xl bg-white/20 flex items-center justify-center">
+                      <span className="text-3xl">📱</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-lg">📥 INSTALL APLIKASI KEUANGAN</h3>
+                      <p className="text-white/90 text-sm">Pasang di home screen untuk akses lebih cepat!</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-white text-sm">Install Aplikasi Keuangan</h3>
-                    <p className="text-white/80 text-xs">Akses lebih cepat dari home screen</p>
+                  <button 
+                    onClick={handleClosePWAPrompt}
+                    className="size-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                  >
+                    <span className="text-white text-xl font-bold">×</span>
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-white/15 rounded-lg p-3 text-center">
+                    <div className="text-2xl mb-1">⚡</div>
+                    <p className="text-white text-xs font-bold">INSTANT</p>
+                    <p className="text-white/80 text-[10px]">Buka cepat</p>
+                  </div>
+                  <div className="bg-white/15 rounded-lg p-3 text-center">
+                    <div className="text-2xl mb-1">📴</div>
+                    <p className="text-white text-xs font-bold">OFFLINE</p>
+                    <p className="text-white/80 text-[10px]">Tanpa internet</p>
+                  </div>
+                  <div className="bg-white/15 rounded-lg p-3 text-center">
+                    <div className="text-2xl mb-1">🔔</div>
+                    <p className="text-white text-xs font-bold">ALERTS</p>
+                    <p className="text-white/80 text-[10px]">Notifikasi</p>
                   </div>
                 </div>
-                <button 
-                  onClick={handleClosePWAPrompt}
-                  className="size-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                >
-                  <span className="text-white text-lg">×</span>
-                </button>
-              </div>
-              
-              <div className="flex gap-2 mb-3">
-                <div className="flex-1 bg-white/10 rounded-xl p-2">
-                  <p className="text-white text-xs font-medium">⚡ Lebih Cepat</p>
-                  <p className="text-white/70 text-[10px]">Buka langsung tanpa browser</p>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleInstallPWA}
+                    className="flex-1 bg-white text-blue-600 font-bold py-3 rounded-xl hover:bg-white/90 transition-colors text-base shadow-lg"
+                  >
+                    📥 INSTALL SEKARANG
+                  </button>
+                  <button
+                    onClick={handleClosePWAPrompt}
+                    className="flex-1 bg-white/20 text-white font-bold py-3 rounded-xl hover:bg-white/30 transition-colors text-base"
+                  >
+                    NANTI SAJA
+                  </button>
                 </div>
-                <div className="flex-1 bg-white/10 rounded-xl p-2">
-                  <p className="text-white text-xs font-medium">📴 Offline</p>
-                  <p className="text-white/70 text-[10px]">Tetap bisa catat transaksi</p>
-                </div>
-                <div className="flex-1 bg-white/10 rounded-xl p-2">
-                  <p className="text-white text-xs font-medium">🔔 Notifikasi</p>
-                  <p className="text-white/70 text-[10px]">Pengingat real-time</p>
-                </div>
+                
+                <p className="text-white/70 text-xs text-center mt-3">
+                  ⭐ Gratis • 🔒 Aman • 🚫 Tanpa iklan • 💯 100% Private
+                </p>
               </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={handleInstallPWA}
-                  className="flex-1 bg-white text-blue-600 font-bold py-2.5 rounded-xl hover:bg-white/90 transition-colors text-sm"
-                >
-                  Install Sekarang
-                </button>
-                <button
-                  onClick={handleClosePWAPrompt}
-                  className="flex-1 bg-white/10 text-white font-bold py-2.5 rounded-xl hover:bg-white/20 transition-colors text-sm"
-                >
-                  Nanti Saja
-                </button>
-              </div>
-              
-              <p className="text-white/60 text-[10px] text-center mt-2">
-                Gratis • Aman • Tanpa iklan
-              </p>
             </div>
           </div>
         )}
