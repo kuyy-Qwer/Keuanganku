@@ -5,8 +5,11 @@ import { getSettings, getAchievements, computeGuardianAnalysis } from "./store/d
 import { dispatchNotif } from "./lib/notify";
 import NotificationToast from "./components/NotificationToast";
 import SplashScreen from "./components/SplashScreen";
+import PWAInstallModal from "./components/PWAInstallModal";
 import usePusherBeams from "../hooks/usePusherBeams";
 import useReminderScheduler from "./hooks/useReminderScheduler";
+import usePWAInstall from "./hooks/usePWAInstall";
+import { Analytics } from "@vercel/analytics/next";
 
 function useApplySettings() {
   useEffect(() => {
@@ -152,6 +155,41 @@ function useServiceWorkerRegistration() {
   }, []);
 }
 
+// Hook untuk menampilkan modal install PWA setelah tutorial
+function usePWAInstallPrompt() {
+  const { isInstallable, isStandalone } = usePWAInstall();
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [hasShownInstallPrompt, setHasShownInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    // Cek jika tutorial sudah selesai (simpan di localStorage)
+    const tutorialCompleted = localStorage.getItem('tutorial_completed') === 'true';
+    
+    // Tampilkan modal jika:
+    // 1. Tutorial sudah selesai
+    // 2. Belum pernah ditampilkan
+    // 3. Bisa diinstall (bukan PWA standalone)
+    // 4. Bukan di iOS (karena iOS selalu bisa add to homescreen)
+    if (tutorialCompleted && 
+        !hasShownInstallPrompt && 
+        isInstallable && 
+        !isStandalone) {
+      // Tunggu 2 detik setelah tutorial selesai
+      const timer = setTimeout(() => {
+        setShowInstallModal(true);
+        setHasShownInstallPrompt(true);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isInstallable, isStandalone, hasShownInstallPrompt]);
+
+  return {
+    showInstallModal,
+    setShowInstallModal
+  };
+}
+
 export default function App() {
   useApplySettings();
   useAchievementWatcher();
@@ -169,6 +207,10 @@ export default function App() {
   // Initialize Pusher Beams untuk notifikasi real-time
   const { isSupported, isSubscribed, error, deviceId } = usePusherBeams();
   
+  // PWA install modal
+  const { showInstallModal, setShowInstallModal } = usePWAInstallPrompt();
+  const { showInstallPrompt } = usePWAInstall();
+
   useEffect(() => {
     if (isSupported && isSubscribed) {
       console.log('Pusher Beams aktif - notifikasi real-time siap');
@@ -179,11 +221,25 @@ export default function App() {
     }
   }, [isSupported, isSubscribed, error, deviceId]);
 
+  const handleInstallPWA = async () => {
+    const installed = await showInstallPrompt();
+    if (installed) {
+      // Optional: Track installation success
+      localStorage.setItem('pwa_installed', 'true');
+    }
+  };
+
   return (
     <>
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
       <NotificationToast />
+      <PWAInstallModal 
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        onInstall={handleInstallPWA}
+      />
       <RouterProvider router={router} />
+      <Analytics />
     </>
   );
 }
