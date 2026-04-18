@@ -29,5 +29,8 @@
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
-  ]
+  ],
+  "env": {
+    "ENABLE_VC_BUILD": "1"
+  }
 }
