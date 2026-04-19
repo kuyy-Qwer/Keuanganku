@@ -9,6 +9,7 @@ import {
 } from "../store/database";
 import { useLang, t } from "../i18n";
 import usePWAInstall from "../hooks/usePWAInstall";
+import PWAInstallPrompt from "../components/PWAInstallPrompt";
 
 interface OutletContext { openTransactionModal: () => void; }
 
@@ -973,6 +974,9 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 }
