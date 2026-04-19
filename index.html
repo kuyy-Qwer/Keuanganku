@@ -18,26 +18,21 @@
     <meta name="msapplication-tap-highlight" content="no" />
     
     <!-- iOS Icons -->
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-app.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-app.svg" />
     
-    <!-- Splash Screens for iOS -->
-    <link rel="apple-touch-startup-image" href="/splash-iphone5.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/splash-iphone6.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/splash-iphoneplus.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/splash-iphonex.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
-    <link rel="apple-touch-startup-image" href="/splash-ipad.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/icon-dark.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileImage" content="/icon-dark.svg" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
     
     <!-- Manifest -->
     <link rel="manifest" href="/manifest.json" />
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/icon-32x32.png" sizes="32x32" />
-    <link rel="icon" type="image/png" href="/icon-16x16.png" sizes="16x16" />
-    
-    <title>Keuanganku - Aplikasi Keuangan Pribadi</title>
+    <title>Keuanganku - Pencatatan Keuangan</title>
     <!-- Theme CSS -->
     <link rel="stylesheet" href="/src/styles/theme.css">
     <style>
@@ -75,18 +70,26 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Register service worker -->
+    <!-- Service Worker: unregister di dev, register di production -->
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('ServiceWorker registration successful');
-            })
-            .catch(err => {
-              console.log('ServiceWorker registration failed: ', err);
+        // Deteksi development mode (localhost)
+        var isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (isDev) {
+          // Paksa unregister semua service worker di dev agar tidak interferensi HMR
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          });
+          // Hapus semua cache di dev
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
             });
-        });
+          }
+        }
+        // Production: register dilakukan oleh App.tsx
       }
     </script>
   </body>

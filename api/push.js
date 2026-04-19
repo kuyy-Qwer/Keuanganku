@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       notification: {
         title: safeTitle,
         body: safeBody,
-        icon: "/icon-192.png",
+        icon: "/icon.svg",
         tag: safeTag,
         requireInteraction: false,
         data: { emoji: emoji ?? "🔔" },

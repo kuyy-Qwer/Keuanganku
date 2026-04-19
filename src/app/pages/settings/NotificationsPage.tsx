@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getSettings, saveSettings, type AppSettings } from "../../store/database";
 import { useLang, t } from "../../i18n";
 
@@ -8,6 +8,27 @@ export default function NotificationsPage() {
   const lang = useLang();
   const L = (id: string, en: string) => lang === "en" ? en : id;
   const [settings, setSettings] = useState<AppSettings["notifications"]>(getSettings().notifications);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  const [requestingPermission, setRequestingPermission] = useState(false);
+
+  useEffect(() => {
+    if (typeof Notification !== 'undefined') {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
+
+  const handleRequestPermission = async () => {
+    if (!('Notification' in window)) return;
+    setRequestingPermission(true);
+    try {
+      const result = await Notification.requestPermission();
+      setNotifPermission(result);
+    } finally {
+      setRequestingPermission(false);
+    }
+  };
 
   const items: { key: keyof AppSettings["notifications"]; label: string; desc: string; icon: string }[] = [
     { key: "transactions", label: t("notifTransactions", lang), desc: t("notifTransactionsDesc", lang), icon: "💸" },
@@ -39,6 +60,73 @@ export default function NotificationsPage() {
           <h1 className="font-['Plus_Jakarta_Sans'] font-extrabold text-[18px]" style={{ color: "var(--app-text)" }}>
             {t("notificationsTitle", lang)}
           </h1>
+        </div>
+
+        {/* Status izin notifikasi browser */}
+        <div className="rounded-[18px] p-4 border"
+          style={{
+            backgroundColor: notifPermission === 'granted'
+              ? "rgba(78,222,163,0.06)"
+              : notifPermission === 'denied'
+              ? "rgba(255,180,171,0.06)"
+              : "rgba(251,191,36,0.06)",
+            borderColor: notifPermission === 'granted'
+              ? "rgba(78,222,163,0.2)"
+              : notifPermission === 'denied'
+              ? "rgba(255,180,171,0.2)"
+              : "rgba(251,191,36,0.2)",
+          }}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-[22px]">
+                {notifPermission === 'granted' ? '🔔' : notifPermission === 'denied' ? '🔕' : '🔔'}
+              </span>
+              <div>
+                <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px]" style={{ color: "var(--app-text)" }}>
+                  {L("Izin Notifikasi Browser", "Browser Notification Permission")}
+                </p>
+                <p className="font-['Inter'] text-[11px] mt-0.5" style={{
+                  color: notifPermission === 'granted' ? "#4edea3"
+                    : notifPermission === 'denied' ? "var(--app-danger)"
+                    : "#fbbf24"
+                }}>
+                  {notifPermission === 'granted'
+                    ? L("✓ Diizinkan — notifikasi push aktif", "✓ Granted — push notifications active")
+                    : notifPermission === 'denied'
+                    ? L("✗ Ditolak — aktifkan di pengaturan browser", "✗ Denied — enable in browser settings")
+                    : L("Belum diizinkan — tap untuk mengaktifkan", "Not granted — tap to enable")}
+                </p>
+              </div>
+            </div>
+            {notifPermission === 'default' && (
+              <button
+                onClick={handleRequestPermission}
+                disabled={requestingPermission}
+                className="shrink-0 rounded-[12px] px-3 py-2 font-['Plus_Jakarta_Sans'] font-bold text-[11px] transition-all active:scale-95 disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg,#4edea3,#00b4a2)", color: "#003824" }}>
+                {requestingPermission ? L("...", "...") : L("Izinkan", "Allow")}
+              </button>
+            )}
+            {notifPermission === 'denied' && (
+              <button
+                onClick={() => window.open('chrome://settings/content/notifications', '_blank')}
+                className="shrink-0 rounded-[12px] px-3 py-2 font-['Plus_Jakarta_Sans'] font-bold text-[11px] transition-all active:scale-95"
+                style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text2)", border: "1px solid var(--app-border)" }}>
+                {L("Pengaturan", "Settings")}
+              </button>
+            )}
+          </div>
+
+          {notifPermission === 'denied' && (
+            <div className="mt-3 rounded-[12px] p-3" style={{ backgroundColor: "var(--app-card2)" }}>
+              <p className="font-['Inter'] text-[11px] leading-relaxed" style={{ color: "var(--app-text2)" }}>
+                💡 {L(
+                  "Untuk mengaktifkan: buka Pengaturan Browser → Privasi & Keamanan → Notifikasi → cari URL aplikasi ini → ubah ke 'Izinkan'.",
+                  "To enable: open Browser Settings → Privacy & Security → Notifications → find this app's URL → change to 'Allow'."
+                )}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Summary */}
@@ -83,6 +171,25 @@ export default function NotificationsPage() {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Cara kerja notifikasi */}
+        <div className="rounded-[18px] p-4 border" style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
+          <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px] uppercase tracking-wider mb-3" style={{ color: "var(--app-text2)" }}>
+            {L("Cara Kerja Notifikasi", "How Notifications Work")}
+          </p>
+          <div className="space-y-2">
+            {[
+              { icon: "📱", text: L("Notifikasi in-app: muncul sebagai toast di dalam aplikasi saat kamu sedang menggunakannya.", "In-app: appears as toast inside the app while you're using it.") },
+              { icon: "🔔", text: L("Notifikasi push: muncul di HP meski aplikasi ditutup — butuh izin browser & install sebagai PWA.", "Push: appears on your phone even when app is closed — requires browser permission & PWA install.") },
+              { icon: "⚡", text: L("Achievement, peringatan keuangan, dan pengingat dikirim via Pusher Beams ke semua device yang terdaftar.", "Achievements, financial alerts, and reminders are sent via Pusher Beams to all registered devices.") },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className="text-[14px] shrink-0 mt-0.5">{item.icon}</span>
+                <p className="font-['Inter'] text-[11px] leading-relaxed" style={{ color: "var(--app-text2)" }}>{item.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

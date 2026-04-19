@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router";
 import { useLang } from "../../i18n";
-
 export default function TermsOfServicePage() {
   const navigate = useNavigate();
   const lang = useLang();

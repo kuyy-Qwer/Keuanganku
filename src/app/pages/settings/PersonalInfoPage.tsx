@@ -2,7 +2,6 @@ import { useNavigate } from "react-router";
 import { useState, useEffect, useRef } from "react";
 import { getUser, saveUser, type UserProfile } from "../../store/database";
 import { useLang, t } from "../../i18n";
-
 const AVATAR_KEY = "luminary_avatar";
 
 function getAvatar(): string {

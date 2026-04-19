@@ -1,143 +1,170 @@
-import { useEffect, useRef } from 'react';
-import { sendFinancialNotification } from '../../lib/pusherNotifications';
-import { getSettings } from '../store/database';
+/**
+ * useReminderScheduler
+ * 
+ * Jadwal notifikasi:
+ * 1. Peringatan pencatatan jam 12:00 siang — setiap hari
+ * 2. Peringatan pencatatan setelah maghrib ~18:30 — setiap hari
+ * 3. Notifikasi backup — sesuai tanggal yang dipilih user
+ * 
+ * Cara kerja:
+ * - Saat app dibuka, hitung berapa milidetik sampai waktu berikutnya
+ * - Set setTimeout untuk trigger notifikasi tepat waktu
+ * - Gunakan Notification API langsung (bukan Pusher) agar tidak broadcast ke semua user
+ * - Simpan lastSent di localStorage agar tidak kirim dua kali sehari
+ */
 
-export interface ReminderSchedule {
-  id: string;
-  title: string;
-  message: string;
-  time: string; // Format: "HH:MM" (24-hour)
-  days: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-  enabled: boolean;
-  lastSent?: string; // ISO timestamp
+import { useEffect, useRef } from 'react';
+import { getSettings, getBackupSettings, saveBackupSettings, generateBackupFilename, exportAllData } from '../store/database';
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+/** Kirim notifikasi browser langsung (tidak via Pusher) */
+function sendLocalNotification(title: string, body: string, icon = '/icon.svg', tag?: string) {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission !== 'granted') return;
+
+  try {
+    // Coba via service worker dulu (lebih reliable di mobile)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(title, {
+          body,
+          icon,
+          badge: '/icon.svg',
+          tag: tag ?? `luminary-${Date.now()}`,
+          vibrate: [200, 100, 200],
+          data: { url: '/app' },
+        });
+      }).catch(() => {
+        // Fallback ke Notification API biasa
+        new Notification(title, { body, icon, tag });
+      });
+    } else {
+      new Notification(title, { body, icon, tag });
+    }
+  } catch {
+    // Ignore — notifikasi tidak kritis
+  }
 }
 
-const defaultReminders: ReminderSchedule[] = [
-  {
-    id: 'morning-reminder',
-    title: '🌅 Pagi yang Produktif',
-    message: 'Selamat pagi! Jangan lupa catat transaksi hari ini. Mulai hari dengan mencatat pengeluaran pertama.',
-    time: '08:00',
-    days: [1, 2, 3, 4, 5], // Senin-Jumat
-    enabled: true
-  },
-  {
-    id: 'evening-reminder',
-    title: '🌙 Review Harian',
-    message: 'Sudahkah Anda mencatat semua transaksi hari ini? Review keuangan harian membantu menjaga disiplin.',
-    time: '20:00',
-    days: [1, 2, 3, 4, 5], // Senin-Jumat
-    enabled: true
-  },
-  {
-    id: 'weekend-reminder',
-    title: '📊 Akhir Pekan',
-    message: 'Waktu yang tepat untuk review mingguan. Cek progress tabungan dan rencana keuangan Anda.',
-    time: '10:00',
-    days: [6], // Sabtu
-    enabled: true
-  },
-  {
-    id: 'monthly-review',
-    title: '📈 Review Bulanan',
-    message: 'Akhir bulan! Waktunya evaluasi pencapaian finansial bulan ini dan rencanakan bulan depan.',
-    time: '09:00',
-    days: [], // Akan di-set berdasarkan tanggal
-    enabled: true
+/** Hitung milidetik sampai jam HH:MM hari ini atau besok */
+function msUntilTime(hour: number, minute: number): number {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(hour, minute, 0, 0);
+
+  // Jika sudah lewat hari ini, jadwalkan besok
+  if (target.getTime() <= now.getTime()) {
+    target.setDate(target.getDate() + 1);
   }
-];
+
+  return target.getTime() - now.getTime();
+}
+
+/** Cek apakah sudah kirim notifikasi hari ini untuk key tertentu */
+function alreadySentToday(key: string): boolean {
+  const last = localStorage.getItem(`luminary_notif_sent_${key}`);
+  if (!last) return false;
+  return new Date(last).toDateString() === new Date().toDateString();
+}
+
+/** Tandai notifikasi sudah dikirim hari ini */
+function markSentToday(key: string) {
+  localStorage.setItem(`luminary_notif_sent_${key}`, new Date().toISOString());
+}
+
+// ── Hook utama ─────────────────────────────────────────────────────
 
 function useReminderScheduler() {
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastCheckRef = useRef<Date>(new Date());
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const checkAndSendReminders = async () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-    const currentDate = now.getDate();
-    
-    // Cek settings user
+  const clearAllTimers = () => {
+    timersRef.current.forEach(t => clearTimeout(t));
+    timersRef.current = [];
+  };
+
+  const scheduleAll = () => {
+    clearAllTimers();
+
     const settings = getSettings();
-    if (!settings.notifications?.reminders) {
-      return;
-    }
+    if (!settings.notifications?.reminders) return;
 
-    // Ambil reminders dari settings atau gunakan default
-    const userReminders = settings.reminders || defaultReminders;
-
-    for (const reminder of userReminders) {
-      if (!reminder.enabled) continue;
-
-      // Parse waktu reminder
-      const [reminderHour, reminderMinute] = reminder.time.split(':').map(Number);
-      
-      // Cek apakah waktu sudah sesuai
-      const isTimeMatch = 
-        currentHour === reminderHour && 
-        currentMinute === reminderMinute;
-      
-      if (!isTimeMatch) continue;
-
-      // Cek hari (khusus monthly review cek tanggal)
-      if (reminder.id === 'monthly-review') {
-        const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        if (currentDate !== lastDayOfMonth) continue;
-      } else {
-        // Cek hari dalam seminggu
-        if (!reminder.days.includes(currentDay)) continue;
-      }
-
-      // Cek apakah sudah dikirim hari ini
-      const today = now.toDateString();
-      if (reminder.lastSent && new Date(reminder.lastSent).toDateString() === today) {
-        continue;
-      }
-
-      // Kirim notifikasi
-      try {
-        await sendFinancialNotification(
-          reminder.title,
-          reminder.message,
-          `reminder-${reminder.id}`,
-          {
-            type: 'reminder',
-            reminderId: reminder.id,
-            scheduledTime: reminder.time
-          }
+    // ── 1. Peringatan pencatatan jam 12:00 siang ──────────────────
+    const msToNoon = msUntilTime(12, 0);
+    const noonTimer = setTimeout(() => {
+      if (!alreadySentToday('noon_reminder')) {
+        sendLocalNotification(
+          '☀️ Pengingat Pencatatan Siang',
+          'Sudah catat pengeluaran pagi ini? Jangan sampai lupa — catat sekarang sebelum terlupa!',
+          '/icon-192.png',
+          'luminary-noon-reminder'
         );
+        markSentToday('noon_reminder');
+      }
+      // Jadwalkan ulang untuk besok
+      scheduleAll();
+    }, msToNoon);
+    timersRef.current.push(noonTimer);
 
-        // Update lastSent (ini hanya di memory, perlu disimpan ke database jika ingin persist)
-        reminder.lastSent = now.toISOString();
-        
-        console.log(`Reminder "${reminder.id}" sent at ${now.toLocaleTimeString()}`);
-      } catch (error) {
-        console.error(`Failed to send reminder "${reminder.id}":`, error);
+    // ── 2. Peringatan pencatatan setelah maghrib 18:30 ────────────
+    const msToMaghrib = msUntilTime(18, 30);
+    const maghribTimer = setTimeout(() => {
+      if (!alreadySentToday('maghrib_reminder')) {
+        sendLocalNotification(
+          '🌅 Pengingat Pencatatan Sore',
+          'Waktunya review transaksi hari ini! Catat semua pengeluaran sebelum malam agar laporan keuanganmu akurat.',
+          '/icon-192.png',
+          'luminary-maghrib-reminder'
+        );
+        markSentToday('maghrib_reminder');
+      }
+      // Jadwalkan ulang untuk besok
+      scheduleAll();
+    }, msToMaghrib);
+    timersRef.current.push(maghribTimer);
+
+    // ── 3. Notifikasi backup sesuai tanggal pilihan user ──────────
+    const backupSettings = getBackupSettings();
+    if (backupSettings.autoBackupEnabled) {
+      const now = new Date();
+      const today = now.getDate();
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const targetDay = backupSettings.autoBackupDay === 0 ? lastDayOfMonth : backupSettings.autoBackupDay;
+
+      if (today === targetDay && !alreadySentToday('backup_reminder')) {
+        // Kirim notifikasi backup hari ini jam 09:00
+        const msTo9am = msUntilTime(9, 0);
+        const backupTimer = setTimeout(() => {
+          if (!alreadySentToday('backup_reminder')) {
+            sendLocalNotification(
+              '💾 Waktunya Backup Data!',
+              `Hari ini adalah jadwal backup bulananmu (tgl ${targetDay}). Buka halaman Backup untuk mengunduh cadangan data.`,
+              '/icon-192.png',
+              'luminary-backup-reminder'
+            );
+            markSentToday('backup_reminder');
+          }
+        }, msTo9am);
+        timersRef.current.push(backupTimer);
       }
     }
-
-    lastCheckRef.current = now;
   };
 
   useEffect(() => {
-    // Check setiap menit
-    intervalRef.current = setInterval(checkAndSendReminders, 60 * 1000);
-    
-    // Check sekali saat mount
-    checkAndSendReminders();
+    // Jadwalkan saat mount
+    scheduleAll();
+
+    // Re-jadwalkan saat settings berubah
+    const handleChange = () => scheduleAll();
+    window.addEventListener('luminary_data_change', handleChange);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearAllTimers();
+      window.removeEventListener('luminary_data_change', handleChange);
     };
   }, []);
 
-  return {
-    // Export fungsi untuk manual trigger jika diperlukan
-    triggerReminderCheck: checkAndSendReminders
-  };
+  return {};
 }
 
 export default useReminderScheduler;

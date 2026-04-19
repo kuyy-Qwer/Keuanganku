@@ -1,6 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { exportAllData, importAllData, getUser } from "../store/database";
+import {
+  exportAllData, importAllData, getUser,
+  generateBackupFilename, getBackupSettings, saveBackupSettings, shouldAutoBackupToday,
+} from "../store/database";
 import { useLang } from "../i18n";
 
 export default function BackupPage() {
@@ -16,18 +19,64 @@ export default function BackupPage() {
   const [pinError, setPinError] = useState("");
   const [exportDone, setExportDone] = useState(false);
 
-  // ── Export ────────────────────────────────────────────────────────
+  // Backup schedule state
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoDay, setAutoDay] = useState(0); // 0 = akhir bulan
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [customDayInput, setCustomDayInput] = useState(""); // input tanggal kustom
+
+  useEffect(() => {
+    const s = getBackupSettings();
+    setAutoEnabled(s.autoBackupEnabled);
+    setAutoDay(s.autoBackupDay);
+    setLastBackup(s.lastAutoBackup);
+    setCustomDayInput(s.autoBackupDay === 0 ? "" : String(s.autoBackupDay));
+  }, []);
+
+  // Cek auto-backup saat halaman dibuka
+  useEffect(() => {
+    if (shouldAutoBackupToday()) {
+      triggerAutoBackup();
+    }
+  }, []);
+
+  const triggerAutoBackup = () => {
+    const data = exportAllData();
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = generateBackupFilename();
+    a.click();
+    URL.revokeObjectURL(url);
+    const now = new Date().toISOString();
+    saveBackupSettings({ lastAutoBackup: now });
+    setLastBackup(now);
+  };
+
+  // ── Export manual ─────────────────────────────────────────────────
   const handleExport = () => {
     const data = exportAllData();
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `luminary_backup_${new Date().toISOString().split("T")[0]}.json`;
+    a.download = generateBackupFilename();
     a.click();
     URL.revokeObjectURL(url);
     setExportDone(true);
+    // Catat sebagai backup terakhir
+    const now = new Date().toISOString();
+    saveBackupSettings({ lastAutoBackup: now });
+    setLastBackup(now);
     setTimeout(() => setExportDone(false), 3000);
+  };
+
+  // ── Simpan pengaturan jadwal ──────────────────────────────────────
+  const handleSaveSchedule = () => {
+    const day = customDayInput === "" ? 0 : Math.min(28, Math.max(1, parseInt(customDayInput) || 0));
+    setAutoDay(day);
+    saveBackupSettings({ autoBackupEnabled: autoEnabled, autoBackupDay: day });
   };
 
   // ── Import — step 1: read file ────────────────────────────────────
@@ -42,21 +91,18 @@ export default function BackupPage() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       const content = evt.target?.result as string;
-      // Quick pre-validation before asking for PIN
       const result = importAllData(content);
       if (!result.success) {
         setImportStatus("error");
         setImportError(result.error ?? L("File tidak valid", "Invalid file"));
         return;
       }
-      // Store pending and ask for PIN confirmation
       setPendingJson(content);
       setConfirmPin("");
       setPinError("");
       setImportStatus("confirm");
     };
     reader.readAsText(file);
-    // Reset input so same file can be re-selected
     e.target.value = "";
   };
 
@@ -80,6 +126,24 @@ export default function BackupPage() {
     }
   };
 
+  // Format tanggal terakhir backup
+  const formatLastBackup = (iso: string | null) => {
+    if (!iso) return L("Belum pernah", "Never");
+    const d = new Date(iso);
+    return d.toLocaleDateString(lang === "en" ? "en-US" : "id-ID", {
+      day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+  };
+
+  // Label hari backup
+  const dayLabel = autoDay === 0
+    ? L("Akhir bulan (default)", "End of month (default)")
+    : L(`Tanggal ${autoDay} setiap bulan`, `Day ${autoDay} of every month`);
+
+  // Nama file preview
+  const user = getUser();
+  const previewName = generateBackupFilename();
+
   return (
     <div className="w-full min-h-screen flex justify-center pb-32 overflow-y-auto"
       style={{ backgroundColor: "var(--app-bg)" }}>
@@ -95,7 +159,7 @@ export default function BackupPage() {
           </button>
           <div>
             <h1 className="font-['Plus_Jakarta_Sans'] font-extrabold text-[18px]" style={{ color: "var(--app-text)" }}>
-              💾 {L("Ekspor & Impor Data", "Export & Import Data")}
+              💾 {L("Backup & Restore", "Backup & Restore")}
             </h1>
             <p className="font-['Inter'] text-[11px]" style={{ color: "var(--app-text2)" }}>
               {L("Cadangkan atau pulihkan data keuanganmu", "Back up or restore your financial data")}
@@ -103,14 +167,129 @@ export default function BackupPage() {
           </div>
         </div>
 
-        {/* Info */}
-        <div className="rounded-[20px] p-4 border" style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
-          <p className="font-['Inter'] text-[12px] leading-relaxed" style={{ color: "var(--app-text2)" }}>
-            {L(
-              "Cadangan mencakup semua data: transaksi, tabungan, dana darurat, aset, rekening bank, dan pengaturan. Format file: JSON terenkripsi dengan metadata versi.",
-              "Backup includes all data: transactions, savings, emergency funds, assets, bank accounts, and settings. File format: JSON with version metadata."
-            )}
+        {/* Nama file preview */}
+        <div className="rounded-[16px] px-4 py-3 border"
+          style={{ backgroundColor: "rgba(78,222,163,0.06)", borderColor: "rgba(78,222,163,0.2)" }}>
+          <p className="font-['Inter'] text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: "#4edea3" }}>
+            {L("Nama file backup", "Backup filename")}
           </p>
+          <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px] break-all" style={{ color: "var(--app-text)" }}>
+            {previewName}
+          </p>
+        </div>
+
+        {/* ── Jadwal Backup Otomatis ── */}
+        <div className="rounded-[24px] p-5 border space-y-4"
+          style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-[12px] flex items-center justify-center"
+                style={{ backgroundColor: "rgba(251,191,36,0.15)" }}>
+                <span className="text-[20px]">⏰</span>
+              </div>
+              <div>
+                <p className="font-['Plus_Jakarta_Sans'] font-bold text-[14px]" style={{ color: "var(--app-text)" }}>
+                  {L("Backup Otomatis", "Auto Backup")}
+                </p>
+                <p className="font-['Inter'] text-[11px]" style={{ color: "var(--app-text2)" }}>
+                  {autoEnabled ? dayLabel : L("Nonaktif", "Disabled")}
+                </p>
+              </div>
+            </div>
+            {/* Toggle */}
+            <button
+              onClick={() => {
+                const next = !autoEnabled;
+                setAutoEnabled(next);
+                saveBackupSettings({ autoBackupEnabled: next, autoBackupDay: autoDay });
+              }}
+              className="w-[48px] h-[26px] rounded-full transition-all duration-200 relative shrink-0"
+              style={{ backgroundColor: autoEnabled ? "#4edea3" : "var(--app-card2)" }}>
+              <div className="size-[18px] rounded-full absolute top-1 transition-all duration-200"
+                style={{
+                  backgroundColor: autoEnabled ? "#003824" : "#64748b",
+                  left: autoEnabled ? "26px" : "4px",
+                }} />
+            </button>
+          </div>
+
+          {/* Pilih tanggal */}
+          {autoEnabled && (
+            <div className="space-y-3 pt-1 border-t" style={{ borderColor: "var(--app-border)" }}>
+              <p className="font-['Inter'] text-[11px] font-semibold uppercase tracking-wider pt-2"
+                style={{ color: "var(--app-text2)" }}>
+                {L("Tanggal backup setiap bulan", "Backup date each month")}
+              </p>
+
+              {/* Quick options */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: L("Akhir bulan", "End of month"), value: 0 },
+                  { label: L("Tgl 1", "1st"), value: 1 },
+                  { label: L("Tgl 15", "15th"), value: 15 },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setAutoDay(opt.value);
+                      setCustomDayInput(opt.value === 0 ? "" : String(opt.value));
+                      saveBackupSettings({ autoBackupEnabled: true, autoBackupDay: opt.value });
+                    }}
+                    className="rounded-[12px] py-2.5 text-[11px] font-bold transition-all active:scale-95"
+                    style={{
+                      backgroundColor: autoDay === opt.value ? "rgba(78,222,163,0.15)" : "var(--app-card2)",
+                      color: autoDay === opt.value ? "#4edea3" : "var(--app-text2)",
+                      border: `1px solid ${autoDay === opt.value ? "rgba(78,222,163,0.3)" : "var(--app-border)"}`,
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input tanggal kustom */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 rounded-[14px] border flex items-center px-4 gap-2"
+                  style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
+                  <span className="text-[12px] font-semibold" style={{ color: "var(--app-text2)" }}>
+                    {L("Tgl", "Day")}
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={customDayInput}
+                    onChange={e => setCustomDayInput(e.target.value)}
+                    placeholder="1–28"
+                    className="flex-1 bg-transparent py-3 text-[14px] font-bold outline-none"
+                    style={{ color: "var(--app-text)" }}
+                  />
+                </div>
+                <button
+                  onClick={handleSaveSchedule}
+                  className="rounded-[14px] px-4 py-3 font-bold text-[12px] transition-all active:scale-95"
+                  style={{ background: "linear-gradient(135deg,#4edea3,#00b4a2)", color: "#003824" }}>
+                  {L("Simpan", "Save")}
+                </button>
+              </div>
+
+              <p className="font-['Inter'] text-[10px]" style={{ color: "var(--app-text2)" }}>
+                💡 {L(
+                  "Masukkan tanggal 1–28. Kosongkan untuk akhir bulan. Backup akan otomatis diunduh saat kamu membuka halaman ini pada tanggal tersebut.",
+                  "Enter day 1–28. Leave empty for end of month. Backup will auto-download when you open this page on that date."
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* Terakhir backup */}
+          <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: "var(--app-border)" }}>
+            <p className="font-['Inter'] text-[11px]" style={{ color: "var(--app-text2)" }}>
+              {L("Backup terakhir", "Last backup")}
+            </p>
+            <p className="font-['Inter'] text-[11px] font-semibold" style={{ color: lastBackup ? "#4edea3" : "var(--app-text2)" }}>
+              {formatLastBackup(lastBackup)}
+            </p>
+          </div>
         </div>
 
         {/* Export Card */}
@@ -123,7 +302,7 @@ export default function BackupPage() {
             </div>
             <div>
               <p className="font-['Plus_Jakarta_Sans'] font-bold text-[14px]" style={{ color: "var(--app-text)" }}>
-                {L("Unduh Cadangan", "Download Backup")}
+                {L("Unduh Cadangan Sekarang", "Download Backup Now")}
               </p>
               <p className="font-['Inter'] text-[11px]" style={{ color: "var(--app-text2)" }}>
                 {L("Simpan file .json ke perangkat", "Save .json file to device")}
@@ -132,7 +311,7 @@ export default function BackupPage() {
           </div>
           <button onClick={handleExport}
             className="w-full h-[52px] rounded-[16px] font-['Plus_Jakarta_Sans'] font-extrabold text-[14px] transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            style={{ background: exportDone ? "linear-gradient(135deg,#4edea3,#00b4a2)" : "linear-gradient(135deg,#4edea3,#00b4a2)", color: "#003824" }}>
+            style={{ background: "linear-gradient(135deg,#4edea3,#00b4a2)", color: "#003824" }}>
             {exportDone ? (
               <>✓ {L("Berhasil Diunduh!", "Downloaded!")}</>
             ) : (
@@ -164,13 +343,12 @@ export default function BackupPage() {
             </div>
           </div>
 
-          {/* Warning */}
           <div className="rounded-[12px] p-3 border border-[rgba(251,191,36,0.3)]"
             style={{ backgroundColor: "rgba(251,191,36,0.08)" }}>
             <p className="font-['Inter'] text-[11px] text-[#fbbf24]">
               ⚠️ {L(
-                "Memuat data akan menggantikan SEMUA data yang ada saat ini. Pastikan kamu sudah mengunduh cadangan terbaru sebelum melanjutkan.",
-                "Loading data will replace ALL current data. Make sure you have downloaded the latest backup before proceeding."
+                "Memuat data akan menggantikan SEMUA data yang ada saat ini.",
+                "Loading data will replace ALL current data."
               )}
             </p>
           </div>
@@ -255,19 +433,15 @@ export default function BackupPage() {
               </p>
             </div>
             <div className="p-5 space-y-4">
-              {/* PIN dots */}
               <div className="flex gap-3 justify-center">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="size-3.5 rounded-full transition-all"
-                    style={{
-                      backgroundColor: i < confirmPin.length ? (pinError ? "#ffb4ab" : "#60a5fa") : "var(--app-card2)",
-                    }} />
+                    style={{ backgroundColor: i < confirmPin.length ? (pinError ? "#ffb4ab" : "#60a5fa") : "var(--app-card2)" }} />
                 ))}
               </div>
               {pinError && (
                 <p className="font-['Inter'] text-[12px] text-[#ffb4ab] text-center">{pinError}</p>
               )}
-              {/* Numpad */}
               <div className="grid grid-cols-3 gap-2">
                 {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((d, i) => {
                   if (d === "") return <div key={i} />;

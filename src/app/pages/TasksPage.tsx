@@ -37,7 +37,7 @@ function AnimatedCheckbox({ checked, onChange, size = 20 }: { checked: boolean; 
   return (
     <button onClick={onChange}
       className="relative rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-300"
-      style={{ width: size, height: size, borderColor: checked ? "#4edea3" : "rgba(255,255,255,0.15)", backgroundColor: "transparent" }}>
+      style={{ width: size, height: size, borderColor: checked ? "#4edea3" : "var(--app-border)", backgroundColor: "transparent" }}>
       <div className="absolute inset-0 rounded-full transition-all duration-300"
         style={{ backgroundColor: "#4edea3", transform: checked ? "scale(1)" : "scale(0)", opacity: checked ? 1 : 0 }} />
       {checked && (
@@ -61,9 +61,10 @@ function LabelPicker({ value, onChange, lang }: { value?: string; onChange: (v: 
       {LABELS.map(l => (
         <button key={l.value} onClick={() => onChange(l.value)}
           style={{
-            flex: 1, padding: "8px 4px", borderRadius: 12, border: `2px solid ${value === l.value ? l.color : "rgba(255,255,255,0.07)"}`,
-            background: value === l.value ? `${l.color}20` : "#0b1326",
-            color: value === l.value ? l.color : "#64748b",
+            flex: 1, padding: "8px 4px", borderRadius: 12,
+            border: `2px solid ${value === l.value ? l.color : "var(--app-border)"}`,
+            background: value === l.value ? `${l.color}20` : "var(--app-card2)",
+            color: value === l.value ? l.color : "var(--app-text2)",
             fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
           }}>
@@ -92,10 +93,13 @@ function ChecklistEditor({ items, onChange, lang }: { items: ChecklistItem[]; on
       {items.length > 0 && (
         <div className="space-y-1.5">
           {items.map(item => (
-            <div key={item.id} className="group flex items-center gap-2.5 bg-[#0b1326] px-3 py-2.5 rounded-xl border border-white/5">
+            <div key={item.id} className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
+              style={{ backgroundColor: "var(--app-card2)", borderColor: "var(--app-border)" }}>
               <AnimatedCheckbox checked={item.completed} onChange={() => onChange(items.map(i => i.id === item.id ? { ...i, completed: !i.completed } : i))} size={18} />
-              <span className={`flex-1 text-[13px] ${item.completed ? "text-[#64748b] line-through" : "text-white"}`}>{item.text}</span>
-              <button onClick={() => onChange(items.filter(i => i.id !== item.id))} className="opacity-0 group-hover:opacity-100 p-1 text-[#ffb4ab] transition-opacity">
+              <span className={`flex-1 text-[13px] ${item.completed ? "line-through" : ""}`}
+                style={{ color: item.completed ? "var(--app-text2)" : "var(--app-text)" }}>{item.text}</span>
+              <button onClick={() => onChange(items.filter(i => i.id !== item.id))} className="opacity-0 group-hover:opacity-100 p-1 transition-opacity"
+                style={{ color: "var(--app-danger)" }}>
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -108,9 +112,11 @@ function ChecklistEditor({ items, onChange, lang }: { items: ChecklistItem[]; on
       )}
       <div className="flex gap-2">
         <input ref={inputRef} type="text" placeholder={L("Tambah langkah...", "Add a step...")}
-          className="flex-1 bg-[#0b1326] border border-white/5 rounded-xl px-3 py-2.5 text-[13px] text-white outline-none"
+          className="flex-1 rounded-xl px-3 py-2.5 text-[13px] outline-none border"
+          style={{ backgroundColor: "var(--app-input-bg)", borderColor: "var(--app-border)", color: "var(--app-text)" }}
           onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }} />
-        <button onClick={addItem} className="size-10 rounded-xl bg-[#2d3449] text-white flex items-center justify-center font-bold text-[18px] shrink-0">+</button>
+        <button onClick={addItem} className="size-10 rounded-xl flex items-center justify-center font-bold text-[18px] shrink-0"
+          style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text)" }}>+</button>
       </div>
     </div>
   );
@@ -128,9 +134,11 @@ function AddChecklistInline({ taskId, onAdd, lang }: { taskId: string; onAdd: (i
   return (
     <div className="flex gap-2">
       <input ref={ref} type="text" placeholder={L("Tambah langkah...","Add a step...")}
-        className="flex-1 bg-[#0b1326] border border-white/5 rounded-xl px-3 py-2.5 text-[13px] text-white outline-none"
+        className="flex-1 rounded-xl px-3 py-2.5 text-[13px] outline-none border"
+        style={{ backgroundColor: "var(--app-input-bg)", borderColor: "var(--app-border)", color: "var(--app-text)" }}
         onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); submit(); } }} />
-      <button onClick={submit} className="size-10 rounded-xl bg-[#2d3449] text-white flex items-center justify-center font-bold text-[18px] shrink-0">+</button>
+      <button onClick={submit} className="size-10 rounded-xl flex items-center justify-center font-bold text-[18px] shrink-0"
+        style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text)" }}>+</button>
     </div>
   );
 }
@@ -170,7 +178,8 @@ function TaskCard({ task, colId, onOpen, onMove, lang }: {
       <div className="relative z-10"> {/* Konten dibungkus agar di atas efek glow */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className={`font-bold text-[14px] leading-snug transition-colors ${isComplete ? "text-[#64748b] line-through" : "text-white group-hover:text-[#4edea3]"}`}>
+            <h3 className={`font-bold text-[14px] leading-snug transition-colors ${isComplete ? "line-through" : ""}`}
+              style={{ color: isComplete ? "var(--app-text2)" : "var(--app-text)" }}>
               {task.title}
             </h3>
             {task.notes && <p className="text-[11px] text-[#64748b] line-clamp-1 mt-0.5 italic">{task.notes}</p>}
@@ -207,7 +216,8 @@ function TaskCard({ task, colId, onOpen, onMove, lang }: {
         {isComplete && (
           <div className="flex justify-end mt-2.5" onClick={e => e.stopPropagation()}>
             <button onClick={() => onMove("prev")}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#0b1326] text-[#64748b] hover:bg-[#1a253d] hover:text-white transition-all text-[9px] font-bold border border-transparent hover:border-white/10">
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-all text-[9px] font-bold border"
+              style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text2)", borderColor: "var(--app-border)" }}>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M15 19l-7-7 7-7" /></svg>
               {lang === "en" ? "Undo" : "Kembalikan"}
             </button>
@@ -504,35 +514,35 @@ export default function TasksPage() {
             onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 12px", flexShrink: 0 }}>
               <h2 style={{ fontWeight: 800, fontSize: 18, color: "var(--app-text)", margin: 0 }}>{L("Tugas Baru","New Task")}</h2>
-              <button onClick={closeAddModal} style={{ padding: 8, borderRadius: "50%", background: "rgba(255,255,255,0.05)", color: "#64748b", border: "none", cursor: "pointer", display: "flex" }}>
+              <button onClick={closeAddModal} style={{ padding: 8, borderRadius: "50%", background: "var(--app-card2)", color: "var(--app-text2)", border: "none", cursor: "pointer", display: "flex" }}>
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 16px", minHeight: 0, display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
-                  {L("Judul Tugas","Task Title")} <span style={{ color: "#ffb4ab" }}>*</span>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--app-text2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
+                  {L("Judul Tugas","Task Title")} <span style={{ color: "var(--app-danger)" }}>*</span>
                 </p>
                 <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder={L("Judul tugas...","Task title...")}
-                  style={{ width: "100%", background: "#0b1326", border: `1px solid ${newTitle.trim() ? "rgba(78,222,163,0.3)" : "rgba(255,255,255,0.05)"}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "white", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", background: "var(--app-input-bg)", border: `1px solid ${newTitle.trim() ? "rgba(78,222,163,0.3)" : "var(--app-border)"}`, borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "var(--app-text)", outline: "none", boxSizing: "border-box" }} />
               </div>
               <textarea value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder={L("Catatan (opsional)...","Notes (optional)...")}
-                rows={6} style={{ width: "100%", background: "#0b1326", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "white", outline: "none", resize: "none", boxSizing: "border-box", minHeight: 140 }} />
+                rows={6} style={{ width: "100%", background: "var(--app-input-bg)", border: "1px solid var(--app-border)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--app-text)", outline: "none", resize: "none", boxSizing: "border-box", minHeight: 140 }} />
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
-                  {L("Tanggal","Due Date")} <span style={{ color: "#ffb4ab" }}>*</span>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--app-text2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
+                  {L("Tanggal","Due Date")} <span style={{ color: "var(--app-danger)" }}>*</span>
                 </p>
                 <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)}
-                  style={{ width: "100%", background: "#0b1326", border: `1px solid ${newDueDate ? "rgba(78,222,163,0.3)" : "rgba(255,255,255,0.05)"}`, borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "white", outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", background: "var(--app-input-bg)", border: `1px solid ${newDueDate ? "rgba(78,222,163,0.3)" : "var(--app-border)"}`, borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--app-text)", outline: "none", boxSizing: "border-box" }} />
               </div>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
-                  {L("Label","Label")} <span style={{ color: "#ffb4ab" }}>*</span>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--app-text2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
+                  {L("Label","Label")} <span style={{ color: "var(--app-danger)" }}>*</span>
                 </p>
                 <LabelPicker value={newLabel} onChange={setNewLabel} lang={lang} />
               </div>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "var(--app-text2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
                   {L("Langkah","Steps")}
                   <span style={{ marginLeft: 6, color: newChecklist.length >= 3 ? "#4edea3" : "#fb923c" }}>
                     ({newChecklist.length}/3 {L("min","min")})
@@ -541,7 +551,7 @@ export default function TasksPage() {
                 <ChecklistEditor items={newChecklist} onChange={setNewChecklist} lang={lang} />
               </div>
             </div>
-            <div style={{ padding: "16px 24px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ padding: "16px 24px", flexShrink: 0, borderTop: "1px solid var(--app-border)" }}>
               {(() => {
                 const canSave = newTitle.trim() && newDueDate && newLabel && newChecklist.length >= 3;
                 return (
@@ -571,14 +581,14 @@ export default function TasksPage() {
               </span>
               <div style={{ display: "flex", gap: 8 }}>
                 {editingTaskId !== selectedTask.id && (
-                  <button onClick={() => startEdit(selectedTask)} style={{ padding: 8, borderRadius: "50%", background: "rgba(255,255,255,0.05)", color: "#64748b", border: "none", cursor: "pointer", display: "flex" }}>
+                  <button onClick={() => startEdit(selectedTask)} style={{ padding: 8, borderRadius: "50%", background: "var(--app-card2)", color: "var(--app-text2)", border: "none", cursor: "pointer", display: "flex" }}>
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   </button>
                 )}
-                <button onClick={() => setPendingDeleteTaskId(selectedTask.id)} style={{ padding: 8, borderRadius: "50%", background: "rgba(255,180,171,0.1)", color: "#ffb4ab", border: "none", cursor: "pointer", display: "flex" }}>
+                <button onClick={() => setPendingDeleteTaskId(selectedTask.id)} style={{ padding: 8, borderRadius: "50%", background: "var(--app-danger-bg)", color: "var(--app-danger)", border: "none", cursor: "pointer", display: "flex" }}>
                   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
-                <button onClick={closeDetailModal} style={{ padding: 8, borderRadius: "50%", background: "rgba(255,255,255,0.05)", color: "#64748b", border: "none", cursor: "pointer", display: "flex" }}>
+                <button onClick={closeDetailModal} style={{ padding: 8, borderRadius: "50%", background: "var(--app-card2)", color: "var(--app-text2)", border: "none", cursor: "pointer", display: "flex" }}>
                   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
@@ -588,17 +598,17 @@ export default function TasksPage() {
               <>
                 <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 16px", minHeight: 0, display: "flex", flexDirection: "column", gap: 12 }}>
                   <input value={editTitle} onChange={e => setEditTitle(e.target.value)}
-                    style={{ width: "100%", background: "#0b1326", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "white", outline: "none", fontWeight: 700, boxSizing: "border-box" }} />
+                    style={{ width: "100%", background: "var(--app-input-bg)", border: "1px solid var(--app-border)", borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "var(--app-text)", outline: "none", fontWeight: 700, boxSizing: "border-box" }} />
                   <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2}
-                    style={{ width: "100%", background: "#0b1326", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "white", outline: "none", resize: "none", boxSizing: "border-box" }} />
+                    style={{ width: "100%", background: "var(--app-input-bg)", border: "1px solid var(--app-border)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--app-text)", outline: "none", resize: "none", boxSizing: "border-box" }} />
                   <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)}
-                    style={{ width: "100%", background: "#0b1326", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "white", outline: "none", boxSizing: "border-box" }} />
+                    style={{ width: "100%", background: "var(--app-input-bg)", border: "1px solid var(--app-border)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--app-text)", outline: "none", boxSizing: "border-box" }} />
                   <LabelPicker value={editLabel} onChange={setEditLabel} lang={lang} />
                   <ChecklistEditor items={editChecklist} onChange={setEditChecklist} lang={lang} />
                 </div>
-                <div style={{ padding: "16px 24px", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 8 }}>
+                <div style={{ padding: "16px 24px", flexShrink: 0, borderTop: "1px solid var(--app-border)", display: "flex", gap: 8 }}>
                   <button onClick={() => setEditingTaskId(null)}
-                    style={{ flex: 1, padding: "12px 0", borderRadius: 14, background: "rgba(255,255,255,0.05)", color: "#64748b", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}>
+                    style={{ flex: 1, padding: "12px 0", borderRadius: 14, background: "var(--app-card2)", color: "var(--app-text2)", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}>
                     {L("Batal","Cancel")}
                   </button>
                   <button onClick={handleSaveEdit}
@@ -611,24 +621,24 @@ export default function TasksPage() {
               /* ── Belum dimulai: hanya info + tombol Edit & Hapus ── */
               <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px", minHeight: 0, display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <h2 style={{ fontWeight: 800, fontSize: 20, lineHeight: 1.3, color: "white", margin: 0 }}>{selectedTask.title}</h2>
-                  {selectedTask.notes && <p style={{ fontSize: 13, color: "#64748b", marginTop: 4, fontStyle: "italic" }}>{selectedTask.notes}</p>}
+                  <h2 style={{ fontWeight: 800, fontSize: 20, lineHeight: 1.3, color: "var(--app-text)", margin: 0 }}>{selectedTask.title}</h2>
+                  {selectedTask.notes && <p style={{ fontSize: 13, color: "var(--app-text2)", marginTop: 4, fontStyle: "italic" }}>{selectedTask.notes}</p>}
                 </div>
                 {selectedTask.dueDate && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#64748b"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <span style={{ fontSize: 12, color: "#64748b" }}>
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--app-text2)"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span style={{ fontSize: 12, color: "var(--app-text2)" }}>
                       {new Date(selectedTask.dueDate).toLocaleDateString(lang === "en" ? "en-US" : "id-ID", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
                     </span>
                   </div>
                 )}
                 {selectedTask.checklists.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: "var(--app-text2)", letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>
                       Checklist ({selectedTask.checklists.length} {L("langkah","steps")})
                     </p>
                     {selectedTask.checklists.map(item => (
-                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#0b1326", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)", opacity: 0.6 }}>
+                      <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--app-card2)", padding: "10px 12px", borderRadius: 12, border: "1px solid var(--app-border)", opacity: 0.6 }}>
                         <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.15)", flexShrink: 0 }} />
                         <span style={{ flex: 1, fontSize: 13, color: "#94a3b8" }}>{item.text}</span>
                       </div>

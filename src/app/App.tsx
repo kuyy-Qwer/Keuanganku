@@ -1,14 +1,15 @@
 import { RouterProvider } from "react-router";
 import { router } from "./routes";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { getSettings, getAchievements, computeGuardianAnalysis } from "./store/database";
 import { dispatchNotif } from "./lib/notify";
 import NotificationToast from "./components/NotificationToast";
-import SplashScreen from "./components/SplashScreen";
-import usePusherBeams from "../hooks/usePusherBeams";
+import usePusherBeams from "../hooks/usePusherBeams.ts";
 import useReminderScheduler from "./hooks/useReminderScheduler";
 import usePWAInstall from "./hooks/usePWAInstall";
 import { Analytics } from "@vercel/analytics/react";
+// Import debug tools for development
+import "./utils/onboardingDebug";
 
 function useApplySettings() {
   useEffect(() => {
@@ -18,21 +19,38 @@ function useApplySettings() {
 
       if (s.theme === "light") {
         root.setAttribute("data-theme", "light");
-        root.style.setProperty("--app-bg",      "#f8fafc");   // Light background
-        root.style.setProperty("--app-card",    "#ffffff");   // White cards
-        root.style.setProperty("--app-card2",   "#f0fdf4");   // Light green cards
-        root.style.setProperty("--app-text",    "#1f2937");   // Dark text
-        root.style.setProperty("--app-text2",   "#6b7280");   // Gray text
-        root.style.setProperty("--app-border",  "rgba(0, 180, 162, 0.1)"); // Light green border
-        root.style.setProperty("--app-nav-bg",  "rgba(248,250,252,0.95)");
-      } else {        root.setAttribute("data-theme", "dark");
-        root.style.setProperty("--app-bg", "#0b1326");
-        root.style.setProperty("--app-card", "#131b2e");
-        root.style.setProperty("--app-card2", "#1a2740");
-        root.style.setProperty("--app-text", "#dae2fd");
-        root.style.setProperty("--app-text2", "#94a3b8");
-        root.style.setProperty("--app-border", "rgba(78, 222, 163, 0.15)"); // Green tint border
-        root.style.setProperty("--app-nav-bg", "rgba(11,19,38,0.95)");
+        root.style.setProperty("--app-bg",           "#f8fafc");
+        root.style.setProperty("--app-card",          "#ffffff");
+        root.style.setProperty("--app-card2",         "#f0fdf4");
+        root.style.setProperty("--app-text",          "#1f2937");
+        root.style.setProperty("--app-text2",         "#6b7280");
+        root.style.setProperty("--app-border",        "rgba(0, 180, 162, 0.1)");
+        root.style.setProperty("--app-nav-bg",        "rgba(248,250,252,0.95)");
+        root.style.setProperty("--app-input-bg",      "#f0fdf4");
+        root.style.setProperty("--app-keypad-bg",     "#f0fdf4");
+        root.style.setProperty("--app-keypad-border", "rgba(0,180,162,0.12)");
+        root.style.setProperty("--app-pin-dot-empty", "#d1fae5");
+        root.style.setProperty("--app-pin-dot-filled","#10b981");
+        root.style.setProperty("--app-danger",        "#dc2626");
+        root.style.setProperty("--app-danger-bg",     "rgba(220,38,38,0.06)");
+        root.style.setProperty("--app-danger-border", "rgba(220,38,38,0.2)");
+      } else {
+        root.setAttribute("data-theme", "dark");
+        root.style.setProperty("--app-bg",           "#0b1326");
+        root.style.setProperty("--app-card",          "#131b2e");
+        root.style.setProperty("--app-card2",         "#1a2740");
+        root.style.setProperty("--app-text",          "#dae2fd");
+        root.style.setProperty("--app-text2",         "#94a3b8");
+        root.style.setProperty("--app-border",        "rgba(78, 222, 163, 0.15)");
+        root.style.setProperty("--app-nav-bg",        "rgba(11,19,38,0.95)");
+        root.style.setProperty("--app-input-bg",      "#1a2740");
+        root.style.setProperty("--app-keypad-bg",     "#131b2e");
+        root.style.setProperty("--app-keypad-border", "rgba(255,255,255,0.04)");
+        root.style.setProperty("--app-pin-dot-empty", "#2d3449");
+        root.style.setProperty("--app-pin-dot-filled","#4edea3");
+        root.style.setProperty("--app-danger",        "#ffb4ab");
+        root.style.setProperty("--app-danger-bg",     "rgba(255,180,171,0.08)");
+        root.style.setProperty("--app-danger-border", "rgba(255,180,171,0.15)");
       }
 
       root.setAttribute("lang", s.language || "id");
@@ -44,9 +62,26 @@ function useApplySettings() {
   }, []);
 }
 
-/** Deteksi achievement yang baru unlock dan kirim notifikasi */
+/** Deteksi achievement yang baru unlock dan kirim notifikasi — dengan queue agar tidak beruntun */
 function useAchievementWatcher() {
   const prevUnlocked = useRef<Set<string>>(new Set());
+  const queueRef = useRef<Array<{ title: string; description: string; emoji: string }>>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushQueue = () => {
+    if (queueRef.current.length === 0) return;
+    const next = queueRef.current.shift()!;
+    dispatchNotif({
+      type: "achievement",
+      title: `🏆 ${next.title}`,
+      message: next.description,
+      emoji: next.emoji,
+    });
+    // Kirim notif berikutnya setelah 8 detik (lebih dari durasi toast achievement 7 detik)
+    if (queueRef.current.length > 0) {
+      timerRef.current = setTimeout(flushQueue, 8000);
+    }
+  };
 
   useEffect(() => {
     // Inisialisasi state awal tanpa trigger notif
@@ -55,21 +90,32 @@ function useAchievementWatcher() {
 
     const check = () => {
       const current = getAchievements();
+      const newlyUnlocked: typeof current = [];
       current.forEach(a => {
         if (a.isUnlocked && !prevUnlocked.current.has(a.id)) {
           prevUnlocked.current.add(a.id);
-          dispatchNotif({
-            type: "achievement",
-            title: `Penghargaan Baru: ${a.title}`,
-            message: a.description,
-            emoji: a.emoji,
-          });
+          newlyUnlocked.push(a);
         }
       });
+
+      if (newlyUnlocked.length === 0) return;
+
+      // Tambahkan ke queue
+      newlyUnlocked.forEach(a => {
+        queueRef.current.push({ title: a.title, description: a.description, emoji: a.emoji });
+      });
+
+      // Mulai flush jika belum ada timer aktif
+      if (!timerRef.current) {
+        flushQueue();
+      }
     };
 
     window.addEventListener("luminary_data_change", check);
-    return () => window.removeEventListener("luminary_data_change", check);
+    return () => {
+      window.removeEventListener("luminary_data_change", check);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 }
 
@@ -103,72 +149,46 @@ function useGuardianWatcher() {
   }, []);
 }
 
-/** Pengingat Backup Bulanan — notifikasi di akhir bulan */
-function useBackupReminderWatcher() {
-  useEffect(() => {
-    const check = () => {
-      const settings = getSettings();
-      if (!settings.notifications.reminders) return;
-
-      const now = new Date();
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const isLastDay = now.getDate() === lastDayOfMonth;
-
-      if (!isLastDay) return;
-
-      const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
-      const lastNotified = localStorage.getItem("luminary_backup_reminder");
-      if (lastNotified === monthKey) return;
-
-      localStorage.setItem("luminary_backup_reminder", monthKey);
-
-      dispatchNotif({
-        type: "reminder",
-        title: "📦 Waktunya Backup Data!",
-        message: "Akhir bulan ini adalah waktu yang tepat untuk mencadangkan data Anda. Jaga keamanan informasi keuangan Anda.",
-        emoji: "💾",
-      });
-    };
-
-    // Cek saat mount dan setiap hari
-    check();
-    const interval = setInterval(check, 24 * 60 * 60 * 1000); // setiap 24 jam
-    return () => clearInterval(interval);
-  }, []);
-}
+/** Pengingat Backup Bulanan — sudah dihandle oleh useReminderScheduler */
+// function useBackupReminderWatcher() { ... }
 
 // Register service worker untuk notifikasi push
 function useServiceWorkerRegistration() {
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then((registration) => {
-            console.log('Service Worker registered:', registration);
-          })
-          .catch((error) => {
-            console.error('Service Worker registration failed:', error);
-          });
+    if (!('serviceWorker' in navigator)) return;
+
+    // Di development: unregister semua service worker agar tidak interferensi HMR
+    if (import.meta.env.DEV) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+          console.log('Service Worker unregistered (dev mode)');
+        }
       });
+      return;
     }
+
+    // Di production: register service worker
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then((registration) => {
+          console.log('Service Worker registered:', registration);
+        })
+        .catch((error) => {
+          console.error('Service Worker registration failed:', error);
+        });
+    });
   }, []);
 }
 
-// Hook untuk menampilkan modal install PWA setelah tutorial
-function usePWAInstallPrompt() {
-  return { showInstallModal: false, setShowInstallModal: (_: boolean) => {} };
-}
+// Hook untuk menampilkan modal install PWA setelah tutorial — tidak digunakan lagi
+// function usePWAInstallPrompt() { ... }
 
 export default function App() {
   useApplySettings();
   useAchievementWatcher();
   useGuardianWatcher();
-  useBackupReminderWatcher();
   useServiceWorkerRegistration();
-  
-  // Splash screen — tampil setiap kali app dibuka
-  const [showSplash, setShowSplash] = useState(true);
-  const handleSplashDone = useCallback(() => setShowSplash(false), []);
 
   // Initialize reminder scheduler untuk pengingat pencatatan
   useReminderScheduler();
@@ -176,9 +196,8 @@ export default function App() {
   // Initialize Pusher Beams untuk notifikasi real-time
   const { isSupported, isSubscribed, error, deviceId } = usePusherBeams();
   
-  // PWA install modal (disabled — install button is now on HomePage)
-  const { showInstallModal, setShowInstallModal } = usePWAInstallPrompt();
-  const { showInstallPrompt } = usePWAInstall();
+  // PWA install (button is on HomePage)
+  usePWAInstall();
 
   useEffect(() => {
     if (isSupported && isSubscribed) {
@@ -192,7 +211,6 @@ export default function App() {
 
   return (
     <>
-      {showSplash && <SplashScreen onDone={handleSplashDone} />}
       <NotificationToast />
       <RouterProvider router={router} />
       <Analytics />

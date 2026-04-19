@@ -1,48 +1,57 @@
 import { useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router";
-import { isAuthenticated, refreshActivity, destroySession } from "../lib/authGuard";
+import { Navigate, useLocation } from "react-router";
+import { isAuthenticated, refreshActivity, destroySession, userHasPin } from '@/app/lib/authGuard';
 
 /**
  * AuthGuard — wraps protected routes.
- * - Redirects to /login if no valid session
+ * - Checks if onboarding is completed first
+ * - If user has no PIN set, allows direct access (no login required)
+ * - If user has PIN, redirects to /login if no valid session
  * - Refreshes activity on user interaction
  * - Listens for inactivity and auto-logs out
  */
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
   const location = useLocation();
   const checkRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    // Immediate auth check on mount / route change
-    if (!isAuthenticated()) {
-      destroySession();
-      navigate("/login", { replace: true, state: { from: location.pathname } });
-      return;
-    }
+  const onboardingCompleted = localStorage.getItem('onboarding_completed') === 'true';
+  const authenticated = isAuthenticated();
 
-    // Periodic check every 30 seconds for inactivity timeout
+  // Periodic inactivity check (only if user has PIN and is authenticated)
+  useEffect(() => {
+    if (!onboardingCompleted || !authenticated || !userHasPin()) return;
+
     checkRef.current = setInterval(() => {
       if (!isAuthenticated()) {
         destroySession();
-        navigate("/login", { replace: true, state: { from: location.pathname } });
+        window.location.replace('/login');
       }
     }, 30_000);
 
     return () => {
       if (checkRef.current) clearInterval(checkRef.current);
     };
-  }, [location.pathname]);
+  }, [location.pathname, onboardingCompleted, authenticated]);
 
-  // Refresh activity on any user interaction
+  // Refresh activity on any user interaction (only if user has PIN)
   useEffect(() => {
+    if (!userHasPin()) return;
+
     const events = ["mousedown", "touchstart", "keydown", "scroll", "click"];
     const handler = () => refreshActivity();
     events.forEach(e => window.addEventListener(e, handler, { passive: true }));
     return () => events.forEach(e => window.removeEventListener(e, handler));
   }, []);
 
-  if (!isAuthenticated()) return null;
+  // Redirect if onboarding not completed
+  if (!onboardingCompleted) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Redirect if not authenticated
+  if (!authenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
 
   return <>{children}</>;
 }

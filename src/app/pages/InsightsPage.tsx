@@ -6,7 +6,6 @@ import {
   type GuardianAnalysis,
 } from "../store/database";
 import { useLang } from "../i18n";
-
 interface Insight {
   title: string;
   description: string;
@@ -56,59 +55,81 @@ export default function InsightsPage() {
     const lastMonthIncome = lastMonthTxs.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
     const lastMonthExpense = lastMonthTxs.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
 
-    result.push({
-      title: L("Pengeluaran Mingguan", "Weekly Spending"),
-      description: L(
-        `Kamu menghabiskan ${formatRupiah(weekExpense)} minggu ini.`,
-        `You spent ${formatRupiah(weekExpense)} this week.`
-      ),
-      icon: "📊",
-      type: "info"
-    });
+    // Hanya tampilkan insight pengeluaran mingguan jika ada data
+    if (weekExpense > 0) {
+      const weekSavings = weekIncome - weekExpense;
+      result.push({
+        title: L("Pengeluaran Mingguan", "Weekly Spending"),
+        description: weekIncome > 0
+          ? L(
+              `Kamu menghabiskan ${formatRupiah(weekExpense)} dari ${formatRupiah(weekIncome)} pemasukan minggu ini (${((weekExpense / weekIncome) * 100).toFixed(0)}%).`,
+              `You spent ${formatRupiah(weekExpense)} of ${formatRupiah(weekIncome)} income this week (${((weekExpense / weekIncome) * 100).toFixed(0)}%).`
+            )
+          : L(
+              `Kamu menghabiskan ${formatRupiah(weekExpense)} minggu ini. Belum ada pemasukan tercatat.`,
+              `You spent ${formatRupiah(weekExpense)} this week. No income recorded yet.`
+            ),
+        icon: "📊",
+        type: "info"
+      });
+    }
 
+    // Savings rate — hanya jika ada pemasukan bulan ini
     if (thisMonthIncome > 0) {
       const savingsRate = ((thisMonthIncome - thisMonthExpense) / thisMonthIncome) * 100;
       if (savingsRate >= 20) {
         result.push({
           title: L("Tingkat Tabungan Baik", "Good Savings Rate"),
           description: L(
-            `Bagus! Kamu menabung ${savingsRate.toFixed(0)}% dari pendapatan. Pertahankan!`,
-            `Great! You're saving ${savingsRate.toFixed(0)}% of your income. Keep it up!`
+            `Bagus! Kamu menabung ${savingsRate.toFixed(0)}% dari pendapatan bulan ini (${formatRupiah(thisMonthIncome - thisMonthExpense)}). Pertahankan!`,
+            `Great! You're saving ${savingsRate.toFixed(0)}% of your income this month (${formatRupiah(thisMonthIncome - thisMonthExpense)}). Keep it up!`
           ),
           icon: "💰",
           type: "success"
         });
-      } else if (savingsRate < 10 && savingsRate > 0) {
-        result.push({
-          title: L("Tingkat Tabungan Rendah", "Trying to Save More"),
-          description: L(
-            `Tingkat tabungan kamu hanya ${savingsRate.toFixed(0)}%. Coba kurangi pengeluaran non-esensial.`,
-            `Your savings rate is only ${savingsRate.toFixed(0)}%. Try reducing non-essential expenses.`
-          ),
-          icon: "⚠️",
-          type: "warning"
-        });
-      } else if (savingsRate <= 0) {
+      } else if (savingsRate < 0) {
         result.push({
           title: L("Pengeluaran Lebih dari Pendapatan", "Expenses Exceed Income"),
           description: L(
-            "Pengeluaran bulan ini lebih besar dari pendapatan. Coba atur budget lebih ketat.",
-            "This month's expenses exceed income. Try setting a tighter budget."
+            `Pengeluaran bulan ini (${formatRupiah(thisMonthExpense)}) melebihi pendapatan (${formatRupiah(thisMonthIncome)}) sebesar ${formatRupiah(thisMonthExpense - thisMonthIncome)}. Coba atur budget lebih ketat.`,
+            `This month's expenses (${formatRupiah(thisMonthExpense)}) exceed income (${formatRupiah(thisMonthIncome)}) by ${formatRupiah(thisMonthExpense - thisMonthIncome)}. Try setting a tighter budget.`
           ),
           icon: "🚨",
           type: "warning"
         });
+      } else if (savingsRate < 10) {
+        result.push({
+          title: L("Tingkat Tabungan Rendah", "Low Savings Rate"),
+          description: L(
+            `Tingkat tabungan kamu hanya ${savingsRate.toFixed(0)}% dari pendapatan. Coba targetkan minimal 20% (${formatRupiah(thisMonthIncome * 0.2)}).`,
+            `Your savings rate is only ${savingsRate.toFixed(0)}% of income. Try to aim for at least 20% (${formatRupiah(thisMonthIncome * 0.2)}).`
+          ),
+          icon: "⚠️",
+          type: "warning"
+        });
       }
+    } else if (thisMonthTxs.length > 0) {
+      // Ada transaksi tapi tidak ada pemasukan
+      result.push({
+        title: L("Belum Ada Pemasukan Bulan Ini", "No Income This Month"),
+        description: L(
+          "Kamu sudah mencatat pengeluaran tapi belum ada pemasukan bulan ini. Jangan lupa catat gaji atau pendapatan lainnya.",
+          "You've recorded expenses but no income this month. Don't forget to log your salary or other income."
+        ),
+        icon: "💡",
+        type: "warning"
+      });
     }
 
+    // Perbandingan bulan lalu — hanya jika ada data bulan lalu
     if (lastMonthIncome > 0 && thisMonthIncome > 0) {
       const incomeChange = ((thisMonthIncome - lastMonthIncome) / lastMonthIncome) * 100;
       if (incomeChange > 10) {
         result.push({
           title: L("Pendapatan Meningkat", "Income Increased"),
           description: L(
-            `Pendapatan bulan ini naik ${incomeChange.toFixed(0)}% dari bulan lalu.`,
-            `This month's income is up ${incomeChange.toFixed(0)}% from last month.`
+            `Pendapatan bulan ini naik ${incomeChange.toFixed(0)}% dari bulan lalu (${formatRupiah(lastMonthIncome)} → ${formatRupiah(thisMonthIncome)}).`,
+            `This month's income is up ${incomeChange.toFixed(0)}% from last month (${formatRupiah(lastMonthIncome)} → ${formatRupiah(thisMonthIncome)}).`
           ),
           icon: "📈",
           type: "success"
@@ -117,8 +138,8 @@ export default function InsightsPage() {
         result.push({
           title: L("Pendapatan Menurun", "Income Decreased"),
           description: L(
-            `Pendapatan bulan ini turun ${Math.abs(incomeChange).toFixed(0)}% dari bulan lalu.`,
-            `This month's income is down ${Math.abs(incomeChange).toFixed(0)}% from last month.`
+            `Pendapatan bulan ini turun ${Math.abs(incomeChange).toFixed(0)}% dari bulan lalu (${formatRupiah(lastMonthIncome)} → ${formatRupiah(thisMonthIncome)}).`,
+            `This month's income is down ${Math.abs(incomeChange).toFixed(0)}% from last month (${formatRupiah(lastMonthIncome)} → ${formatRupiah(thisMonthIncome)}).`
           ),
           icon: "📉",
           type: "warning"
@@ -126,6 +147,32 @@ export default function InsightsPage() {
       }
     }
 
+    if (lastMonthExpense > 0 && thisMonthExpense > 0) {
+      const expenseChange = ((thisMonthExpense - lastMonthExpense) / lastMonthExpense) * 100;
+      if (expenseChange > 20) {
+        result.push({
+          title: L("Pengeluaran Naik Signifikan", "Spending Up Significantly"),
+          description: L(
+            `Pengeluaran bulan ini naik ${expenseChange.toFixed(0)}% dari bulan lalu (${formatRupiah(lastMonthExpense)} → ${formatRupiah(thisMonthExpense)}).`,
+            `This month's spending is up ${expenseChange.toFixed(0)}% from last month (${formatRupiah(lastMonthExpense)} → ${formatRupiah(thisMonthExpense)}).`
+          ),
+          icon: "⚠️",
+          type: "warning"
+        });
+      } else if (expenseChange < -10) {
+        result.push({
+          title: L("Pengeluaran Turun", "Spending Down"),
+          description: L(
+            `Pengeluaran bulan ini turun ${Math.abs(expenseChange).toFixed(0)}% dari bulan lalu. Hemat ${formatRupiah(lastMonthExpense - thisMonthExpense)}!`,
+            `This month's spending is down ${Math.abs(expenseChange).toFixed(0)}% from last month. Saved ${formatRupiah(lastMonthExpense - thisMonthExpense)}!`
+          ),
+          icon: "✅",
+          type: "success"
+        });
+      }
+    }
+
+    // Kategori terboros — hanya jika ada pengeluaran
     const expenseByCategory: Record<string, number> = {};
     thisMonthTxs.filter(t => t.type === "expense").forEach(t => {
       expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
@@ -137,8 +184,8 @@ export default function InsightsPage() {
         result.push({
           title: L("Kategori Pengeluaran Terbesar", "Largest Expense Category"),
           description: L(
-            `${topCategory[0]} menyumbang ${topCategoryPct.toFixed(0)}% dari total pengeluaran.`,
-            `${topCategory[0]} accounts for ${topCategoryPct.toFixed(0)}% of total expenses.`
+            `${topCategory[0]} menyumbang ${topCategoryPct.toFixed(0)}% dari total pengeluaran bulan ini (${formatRupiah(topCategory[1])} dari ${formatRupiah(thisMonthExpense)}).`,
+            `${topCategory[0]} accounts for ${topCategoryPct.toFixed(0)}% of total expenses this month (${formatRupiah(topCategory[1])} of ${formatRupiah(thisMonthExpense)}).`
           ),
           icon: "🔍",
           type: "info"
@@ -146,12 +193,13 @@ export default function InsightsPage() {
       }
     }
 
+    // Jika belum ada transaksi sama sekali
     if (transactions.length === 0) {
       result.push({
         title: L("Mulai Mencatat Keuangan", "Start Tracking Finances"),
         description: L(
-          "Catat transaksi pertamamu untuk mendapatkan insights pribadi.",
-          "Record your first transaction to get personalized insights."
+          "Catat transaksi pertamamu untuk mendapatkan insights pribadi yang akurat.",
+          "Record your first transaction to get accurate personalized insights."
         ),
         icon: "✨",
         type: "tip"
@@ -159,7 +207,7 @@ export default function InsightsPage() {
     }
 
     return result;
-  }, [transactions, weekExpense, lang, guardian]);
+  }, [transactions, weekExpense, weekIncome, lang, guardian]);
 
   const getInsightColor = (type: string) => {
     switch (type) {

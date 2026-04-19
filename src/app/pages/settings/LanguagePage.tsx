@@ -2,7 +2,6 @@ import { useNavigate } from "react-router";
 import { useState } from "react";
 import { getSettings, saveSettings } from "../../store/database";
 import { useLang, t } from "../../i18n";
-
 const languages = [
   { code: "id", name: "Bahasa Indonesia", flag: "🇮🇩", native: "Indonesia" },
   { code: "en", name: "English", flag: "🇬🇧", native: "English" },

@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
+import AppLogo from '../../components/AppLogo';
 
 export default function SplashIntroPage() {
   const navigate = useNavigate();
@@ -58,27 +59,19 @@ export default function SplashIntroPage() {
 
         {/* App icon */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.5, y: 30 }}
+          initial={{ opacity: 0, scale: 0.7, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
           className="mb-10"
         >
-          <div
-            className="w-[88px] h-[88px] rounded-[26px] flex items-center justify-center mx-auto"
-            style={{
-              background: 'linear-gradient(135deg, #4edea3 0%, #00b4a2 100%)',
-              boxShadow: '0 24px 64px rgba(78,222,163,0.4), 0 0 0 1px rgba(78,222,163,0.2)',
-            }}
-          >
-            <span style={{ fontSize: '44px', lineHeight: 1 }}>💰</span>
-          </div>
+          <AppLogo size={96} variant="dark" />
         </motion.div>
 
         {/* App name */}
         <motion.p
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.55 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
           className="font-['Plus_Jakarta_Sans'] font-semibold text-xs uppercase tracking-[0.35em] mb-5"
           style={{ color: 'rgba(78,222,163,0.75)' }}
         >
@@ -87,9 +80,9 @@ export default function SplashIntroPage() {
 
         {/* Main headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 22 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.5, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
           className="font-['Plus_Jakarta_Sans'] font-black leading-[1.08] mb-6"
           style={{ fontSize: '40px', color: '#ffffff', letterSpacing: '-0.5px' }}
         >
@@ -109,9 +102,9 @@ export default function SplashIntroPage() {
 
         {/* Subtitle */}
         <motion.p
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 1.05 }}
+          transition={{ duration: 0.4, delay: 0.45 }}
           className="text-[15px] leading-[1.65] max-w-[260px]"
           style={{ color: 'rgba(218,226,253,0.6)' }}
         >
@@ -122,7 +115,7 @@ export default function SplashIntroPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
+          transition={{ delay: 0.6 }}
           className="flex gap-2.5 mt-14"
         >
           {[0, 1, 2].map((i) => (

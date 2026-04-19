@@ -1,7 +1,17 @@
+import { createRoot } from "react-dom/client";
+import App from "./app/App.tsx";
+import ErrorBoundary from "./app/components/ErrorBoundary.tsx";
+import "./styles/index.css";
 
-  import { createRoot } from "react-dom/client";
-  import App from "./app/App.tsx";
-  import "./styles/index.css";
+const rootElement = document.getElementById("root");
 
-  createRoot(document.getElementById("root")!).render(<App />);
+if (!rootElement) {
+  throw new Error("Root element not found. Make sure there is a <div id='root'></div> in your HTML.");
+}
+
+createRoot(rootElement).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
   

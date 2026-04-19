@@ -78,7 +78,7 @@ export default function ProfileSetupPage() {
           {[1, 2, 3, 4].map((s) => (
             <div key={s} className="h-1.5 flex-1 rounded-full overflow-hidden"
               style={{ backgroundColor: 'rgba(78,222,163,0.12)' }}>
-              {s <= 3 && (
+              {s <= 2 && (
                 <motion.div className="h-full rounded-full"
                   style={{ background: 'linear-gradient(90deg, #4edea3, #00b4a2)' }}
                   initial={{ width: 0 }} animate={{ width: '100%' }}
@@ -91,9 +91,9 @@ export default function ProfileSetupPage() {
 
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.3 }}
           className="mb-6 text-center"
         >
           <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-[20px]"
@@ -110,9 +110,9 @@ export default function ProfileSetupPage() {
 
         {/* Form */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
           className="rounded-[24px] p-5 mb-4"
           style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}
         >
@@ -198,7 +198,7 @@ export default function ProfileSetupPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.1 }}
           className="rounded-[18px] p-4 mb-4 flex items-start gap-2"
           style={{ backgroundColor: 'rgba(78,222,163,0.07)', border: '1px solid rgba(78,222,163,0.15)' }}
         >
@@ -212,9 +212,9 @@ export default function ProfileSetupPage() {
 
         {/* CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.1 }}
           className="rounded-[24px] border p-4"
           style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}
         >

@@ -1,106 +1,84 @@
-// Vercel Serverless Function untuk mengirim notifikasi Pusher Beams
-// Endpoint: /api/send-notification
-
-import https from 'https';
+/**
+ * Vercel Serverless Function — /api/send-notification
+ * Alias untuk /api/push — menerima format yang sama.
+ * Dipertahankan untuk backward compatibility.
+ */
 
 export default async function handler(req, res) {
-  // Hanya izinkan POST request
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  try {
-    const { instanceId, secretKey } = getPusherCredentials();
-    const { interests, title, body, data } = req.body;
-
-    // Validasi input
-    if (!interests || !Array.isArray(interests) || interests.length === 0) {
-      return res.status(400).json({ error: 'Interests array required' });
-    }
-
-    if (!title || !body) {
-      return res.status(400).json({ error: 'Title and body required' });
-    }
-
-    const postData = JSON.stringify({
-      interests,
-      web: {
-        notification: {
-          title,
-          body,
-          icon: data?.icon || 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4b0.png',
-          data: data || {}
-        }
-      }
-    });
-
-    const options = {
-      hostname: `${instanceId}.pushnotifications.pusher.com`,
-      path: `/publish_api/v1/instances/${instanceId}/publishes`,
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${secretKey}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    };
-
-    // Kirim request ke Pusher API
-    const result = await new Promise((resolve, reject) => {
-      const req = https.request(options, (response) => {
-        let data = '';
-        
-        response.on('data', (chunk) => {
-          data += chunk;
-        });
-        
-        response.on('end', () => {
-          resolve({
-            statusCode: response.statusCode,
-            body: data
-          });
-        });
-      });
-
-      req.on('error', (error) => {
-        reject(error);
-      });
-
-      req.write(postData);
-      req.end();
-    });
-
-    if (result.statusCode === 200) {
-      return res.status(200).json({ 
-        success: true, 
-        message: 'Notification sent successfully',
-        response: JSON.parse(result.body)
-      });
-    } else {
-      return res.status(result.statusCode).json({ 
-        success: false, 
-        error: 'Failed to send notification',
-        details: result.body 
-      });
-    }
-
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error',
-      details: error.message 
-    });
-  }
-}
-
-function getPusherCredentials() {
   const instanceId = process.env.PUSHER_INSTANCE_ID;
   const secretKey = process.env.PUSHER_SECRET_KEY;
 
   if (!instanceId || !secretKey) {
-    throw new Error('Pusher credentials not configured in environment variables');
+    console.error("Missing Pusher env vars");
+    return res.status(500).json({ error: "Server configuration error" });
   }
 
-  return { instanceId, secretKey };
+  // Support kedua format: {title, body, interests} atau {title, body, interest}
+  const body = req.body ?? {};
+  const title = body.title;
+  const bodyText = body.body;
+  const emoji = body.emoji ?? "🔔";
+  const interests = Array.isArray(body.interests)
+    ? body.interests
+    : [body.interest ?? "financial-alerts"];
+  const tag = body.tag ?? `luminary-${Date.now()}`;
+
+  if (!title || !bodyText) {
+    return res.status(400).json({ error: "title and body are required" });
+  }
+
+  const safeTitle = String(title).slice(0, 100);
+  const safeBody = String(bodyText).slice(0, 300);
+  const safeTag = String(tag).slice(0, 50);
+  const safeInterests = interests
+    .map(i => String(i).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50))
+    .filter(Boolean);
+
+  if (safeInterests.length === 0) {
+    return res.status(400).json({ error: "No valid interests provided" });
+  }
+
+  const pusherPayload = {
+    interests: safeInterests,
+    web: {
+      notification: {
+        title: safeTitle,
+        body: safeBody,
+        icon: "/icon.svg",
+        tag: safeTag,
+        requireInteraction: false,
+        data: { emoji },
+      },
+    },
+  };
+
+  try {
+    const response = await fetch(
+      `https://${instanceId}.pushnotifications.pusher.com/publish_api/v1/instances/${instanceId}/publishes/interests`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secretKey}`,
+        },
+        body: JSON.stringify(pusherPayload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Pusher API error:", response.status, errorText);
+      return res.status(502).json({ error: "Failed to send push notification", details: errorText });
+    }
+
+    const result = await response.json();
+    return res.status(200).json({ success: true, publishId: result.publishId });
+  } catch (err) {
+    console.error("Push notification error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 }

@@ -2,7 +2,6 @@ import { useNavigate } from "react-router";
 import { useState, useEffect, useMemo } from "react";
 import { getWeeklyIncome, getWeeklyExpense, getTransactions, getCategories, getCategoryTotals, formatRupiah, trackPageVisit } from "../store/database";
 import { useLang } from "../i18n";
-
 const MONTH_NAMES_ID = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
 const MONTH_NAMES_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -177,7 +176,16 @@ export default function ReportPage() {
     });
     const sorted = Object.entries(catTotalsFiltered).sort((a, b) => b[1] - a[1]);
     const highest = sorted.length > 0 ? { name: sorted[0][0], amount: sorted[0][1] } : null;
-    const avg = filtered.length > 0 ? (totalIncome + totalExpense) / filtered.length : 0;
+    // Rata-rata per transaksi: hitung berdasarkan tipe yang dipilih
+    const relevantTxs = filterType === "income"
+      ? filtered.filter(t => t.type === "income")
+      : filterType === "expense"
+      ? filtered.filter(t => t.type === "expense")
+      : filtered;
+    const avg = relevantTxs.length > 0
+      ? relevantTxs.reduce((s, t) => s + t.amount, 0) / relevantTxs.length
+      : 0;
+    // Savings rate: hanya valid jika ada pemasukan
     const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0;
     const incomeCount = filtered.filter(t => t.type === "income").length;
     const expenseCount = filtered.filter(t => t.type === "expense").length;
@@ -359,11 +367,21 @@ export default function ReportPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase" style={{ color: "var(--app-text2)" }}>{L("Tingkat Hemat", "Savings Rate")}</p>
-            <p className={`text-[14px] font-black ${statData.savingsRate >= 0 ? 'text-[#4edea3]' : 'text-[#f87171]'}`}>{statData.savingsRate.toFixed(1)}%</p>
+            {statData.totalIncome > 0 ? (
+              <p className={`text-[14px] font-black ${statData.savingsRate >= 0 ? 'text-[#4edea3]' : 'text-[#f87171]'}`}>
+                {statData.savingsRate.toFixed(1)}%
+              </p>
+            ) : (
+              <p className="text-[14px] font-black" style={{ color: "var(--app-text2)" }}>—</p>
+            )}
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase" style={{ color: "var(--app-text2)" }}>{L("Rata-rata", "Average")}</p>
-            <p className="text-[14px] font-black" style={{ color: "var(--app-text)" }}>{formatRupiah(statData.avgTransaction)}</p>
+            <p className="text-[10px] font-bold uppercase" style={{ color: "var(--app-text2)" }}>
+              {filterType === "income" ? L("Rata-rata Masuk", "Avg Income") : filterType === "expense" ? L("Rata-rata Keluar", "Avg Expense") : L("Rata-rata", "Average")}
+            </p>
+            <p className="text-[14px] font-black" style={{ color: "var(--app-text)" }}>
+              {statData.avgTransaction > 0 ? formatRupiah(statData.avgTransaction) : "—"}
+            </p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase" style={{ color: "var(--app-text2)" }}>{L("Jumlah Transaksi", "Transactions")}</p>
@@ -513,15 +531,24 @@ export default function ReportPage() {
             { label: L("Pengeluaran", "Expense"), curr: currExpense, prev: prevExpense, color: "#f87171" },
           ].map(({ label, curr, prev, color }) => {
             const diff = curr - prev;
-            const pct = prev > 0 ? (diff / prev) * 100 : curr > 0 ? 100 : 0;
+            // Hanya tampilkan persentase jika ada data bulan lalu
+            const hasPrev = prev > 0;
+            const pct = hasPrev ? (diff / prev) * 100 : null;
             return (
               <div key={label} className="flex items-center justify-between">
                 <p className="text-[12px] font-bold" style={{ color: "var(--app-text)" }}>{label}</p>
                 <div className="flex items-center gap-2">
                   <p className="text-[12px] font-black" style={{ color }}>{formatRupiah(curr)}</p>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${diff >= 0 ? "bg-[#4edea322] text-[#4edea3]" : "bg-[#f8717122] text-[#f87171]"}`}>
-                    {diff >= 0 ? "+" : ""}{pct.toFixed(0)}%
-                  </span>
+                  {pct !== null ? (
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${diff >= 0 ? "bg-[#4edea322] text-[#4edea3]" : "bg-[#f8717122] text-[#f87171]"}`}>
+                      {diff >= 0 ? "+" : ""}{pct.toFixed(0)}%
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text2)" }}>
+                      {L("Baru", "New")}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -552,7 +579,8 @@ export default function ReportPage() {
 
           <div className="space-y-2">
              {sortedCategories.map(([cat, total]) => {
-                const pct = (total / maxCat) * 100;
+                // Persentase dari total pengeluaran (bukan relatif ke kategori terbesar)
+                const pctOfTotal = totalExpense > 0 ? (total / totalExpense) * 100 : 0;
                 return (
                   <div key={cat} className="rounded-[22px] p-4 border space-y-2"
                     style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
@@ -561,11 +589,14 @@ export default function ReportPage() {
                            <span className="text-[20px]">{categoryEmojiMap[cat] || "💰"}</span>
                            <p className="text-[14px] font-bold" style={{ color: "var(--app-text)" }}>{cat}</p>
                         </div>
-                        <p className="text-[14px] font-black" style={{ color: "var(--app-text)" }}>{formatRupiah(total)}</p>
+                        <div className="text-right">
+                          <p className="text-[14px] font-black" style={{ color: "var(--app-text)" }}>{formatRupiah(total)}</p>
+                          <p className="text-[10px] font-bold" style={{ color: "var(--app-text2)" }}>{pctOfTotal.toFixed(1)}%</p>
+                        </div>
                      </div>
                      <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--app-card2)" }}>
                         <div className="h-full bg-gradient-to-r from-[#4edea3] to-[#60a5fa] rounded-full transition-all duration-1000"
-                          style={{ width: `${pct}%` }} />
+                          style={{ width: `${pctOfTotal}%` }} />
                      </div>
                   </div>
                 );

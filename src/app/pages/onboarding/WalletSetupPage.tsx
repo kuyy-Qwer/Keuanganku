@@ -1,26 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLang } from '../../i18n';
-import { addBankAccount, setCashWalletBalance } from '../../store/database';
+import { addBankAccount, setCashWalletBalance, addTransaction } from '../../store/database';
 
 export default function WalletSetupPage() {
   const navigate = useNavigate();
   const lang = useLang();
   const L = (id: string, en: string) => lang === 'en' ? en : id;
 
-  const [revealed, setRevealed] = useState(false);
   const [cashBalance, setCashBalance] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [bankAccountName, setBankAccountName] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Tunggu 5 detik baru tampilkan form
-  useEffect(() => {
-    const t = setTimeout(() => setRevealed(true), 5000);
-    return () => clearTimeout(t);
-  }, []);
 
   const formatCurrency = (v: string) => (v ? Number(v).toLocaleString('id-ID') : '');
   const parseCurrency = (v: string) => v.replace(/[^\d]/g, '');
@@ -36,6 +29,18 @@ export default function WalletSetupPage() {
 
     const initialCash = Number(cashBalance || '0');
     setCashWalletBalance(initialCash);
+
+    // Catat saldo awal sebagai transaksi pemasukan
+    if (initialCash > 0) {
+      addTransaction({
+        amount: initialCash,
+        category: 'Saldo Awal',
+        notes: L('Saldo awal dari setup onboarding', 'Initial balance from onboarding setup'),
+        type: 'income',
+        date: new Date().toISOString(),
+        paymentSource: { type: 'cash', label: 'Cash' },
+      });
+    }
 
     if (bankName.trim()) {
       addBankAccount({
@@ -107,9 +112,9 @@ export default function WalletSetupPage() {
 
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.3 }}
           className="mb-6 text-center"
         >
           <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-[20px]"
@@ -124,59 +129,13 @@ export default function WalletSetupPage() {
           </p>
         </motion.div>
 
-        {/* Countdown / Form reveal */}
-        <AnimatePresence mode="wait">
-          {!revealed ? (
-            <motion.div
-              key="countdown"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4 }}
-              className="flex flex-col items-center justify-center flex-1 gap-6"
-            >
-              <div className="rounded-[28px] p-8 text-center w-full"
-                style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.1), rgba(0,180,162,0.06))', border: '1px solid rgba(78,222,163,0.2)' }}>
-                <p className="text-sm font-semibold mb-4" style={{ color: 'var(--app-text2)' }}>
-                  {L('Menyiapkan dompet Anda...', 'Preparing your wallet...')}
-                </p>
-                <div className="flex justify-center gap-3 mb-4">
-                  {[0, 1, 2].map((i) => (
-                    <motion.div key={i} className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: '#4edea3' }}
-                      animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.25 }} />
-                  ))}
-                </div>
-                <p className="text-xs" style={{ color: 'var(--app-text2)' }}>
-                  {L('Sebentar lagi...', 'Just a moment...')}
-                </p>
-              </div>
-
-              {/* Ownership psychology card */}
-              <div className="rounded-[24px] p-5 w-full"
-                style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}>
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl shrink-0">💡</span>
-                  <div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: 'var(--app-text)' }}>
-                      {L('Psikologi Kepemilikan', 'Ownership Psychology')}
-                    </p>
-                    <p className="text-xs leading-relaxed" style={{ color: 'var(--app-text2)' }}>
-                      {L('Saat Anda memasukkan saldo, Anda langsung merasa "aplikasi ini berguna untuk uang saya". Dashboard akan langsung hidup!', 'When you enter your balance, you immediately feel "this app is useful for my money". Your dashboard comes alive!')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="form"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col flex-1 gap-4"
-            >
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="flex flex-col flex-1 gap-4"
+        >
               {/* Cash input */}
               <div className="rounded-[24px] p-5"
                 style={{ background: 'linear-gradient(135deg, rgba(78,222,163,0.1), rgba(0,180,162,0.05))', border: '1px solid rgba(78,222,163,0.2)' }}>
@@ -302,9 +261,7 @@ export default function WalletSetupPage() {
                     : L('Lanjut tanpa saldo →', 'Continue without balance →')}
                 </button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );

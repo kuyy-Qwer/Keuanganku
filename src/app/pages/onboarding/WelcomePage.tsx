@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLang } from '../../i18n';
+import AppLogo from '../../components/AppLogo';
 
 export default function WelcomePage() {
   const navigate = useNavigate();
@@ -80,31 +81,27 @@ export default function WelcomePage() {
           {innerStep === 0 && (
             <motion.div
               key="intro"
-              initial={{ opacity: 0, y: 30, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.97 }}
-              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               className="flex flex-col flex-1"
             >
               {/* ── App header ── */}
               <div className="flex flex-col items-center text-center mb-8">
                 <motion.div
-                  initial={{ scale: 0.6, opacity: 0 }}
+                  initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.65, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-                  className="mb-5 flex h-[76px] w-[76px] items-center justify-center rounded-[22px]"
-                  style={{
-                    background: 'linear-gradient(135deg, #4edea3, #00b4a2)',
-                    boxShadow: '0 16px 48px rgba(78,222,163,0.38)',
-                  }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="mb-5 mx-auto"
                 >
-                  <span style={{ fontSize: '38px', lineHeight: 1 }}>💰</span>
+                  <AppLogo size={80} variant="dark" />
                 </motion.div>
 
                 <motion.h1
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.22 }}
+                  transition={{ delay: 0.1 }}
                   className="font-['Plus_Jakarta_Sans'] font-black text-[30px] leading-tight mb-2"
                   style={{ color: 'var(--app-text)' }}
                 >
@@ -112,9 +109,9 @@ export default function WelcomePage() {
                 </motion.h1>
 
                 <motion.p
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.32 }}
+                  transition={{ delay: 0.15 }}
                   className="text-sm leading-relaxed max-w-[270px]"
                   style={{ color: 'var(--app-text2)' }}
                 >
@@ -127,9 +124,9 @@ export default function WelcomePage() {
 
               {/* ── Cerita Keuangan card — warna hijau, teks terbaca ── */}
               <motion.div
-                initial={{ opacity: 0, y: 18 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.38 }}
+                transition={{ delay: 0.2 }}
                 className="mb-5 rounded-[22px] overflow-hidden"
                 style={{
                   background: 'linear-gradient(145deg, #0d2e1e 0%, #0f3524 100%)',
@@ -161,9 +158,9 @@ export default function WelcomePage() {
                   {features.map((f, i) => (
                     <motion.div
                       key={f.title}
-                      initial={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.48 + i * 0.1 }}
+                      transition={{ delay: 0.1 + i * 0.07 }}
                       className="flex items-center gap-3 rounded-[14px] px-3 py-3"
                       style={{ background: 'rgba(78,222,163,0.08)', border: '1px solid rgba(78,222,163,0.12)' }}
                     >
@@ -186,9 +183,9 @@ export default function WelcomePage() {
 
               {/* ── CTA ── */}
               <motion.div
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.72 }}
+                transition={{ delay: 0.25 }}
                 className="rounded-[22px] p-4"
                 style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}
               >
@@ -211,10 +208,10 @@ export default function WelcomePage() {
           {innerStep === 1 && (
             <motion.div
               key="terms"
-              initial={{ opacity: 0, y: 30, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.97 }}
-              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               className="flex flex-col flex-1"
             >
               {/* Back */}
@@ -255,9 +252,9 @@ export default function WelcomePage() {
                 {terms.map((term, i) => (
                   <motion.div
                     key={term.title}
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.09 }}
+                    transition={{ delay: i * 0.07 }}
                     className="rounded-[16px] p-4"
                     style={{
                       background: 'linear-gradient(135deg, rgba(78,222,163,0.08), rgba(0,180,162,0.04))',
@@ -288,9 +285,9 @@ export default function WelcomePage() {
 
               {/* CTA */}
               <motion.div
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.32 }}
+                transition={{ delay: 0.15 }}
                 className="rounded-[22px] p-4 space-y-3"
                 style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}
               >

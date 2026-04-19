@@ -103,6 +103,14 @@ export interface AppSettings {
     loginAlerts: boolean;
   };
   reminders?: ReminderSchedule[];
+  backup?: {
+    /** Tanggal dalam bulan untuk auto-backup (1–28). Default: hari terakhir bulan = 0 */
+    autoBackupDay: number;
+    /** ISO timestamp backup otomatis terakhir */
+    lastAutoBackup?: string;
+    /** Apakah auto-backup aktif */
+    autoBackupEnabled: boolean;
+  };
 }
 
 export interface ChecklistItem {
@@ -541,7 +549,7 @@ const defaultUser: UserProfile = {
   dob: "",
   address: "",
   memberSince: new Date().getFullYear(),
-  pin: "123456",
+  pin: "", // No default PIN - user must create one in settings
 };
 
 const defaultCategories: Category[] = [
@@ -639,6 +647,19 @@ export function exportAllData(): string {
   return JSON.stringify(payload, null, 2);
 }
 
+/**
+ * Generate nama file backup dengan format:
+ * backup_data : aplikasiku (nama user) - YYYY-MM-DD.json
+ */
+export function generateBackupFilename(): string {
+  const user = getUser();
+  const name = user.fullName?.trim() || "pengguna";
+  const date = new Date().toISOString().split("T")[0];
+  // Sanitize nama untuk filename (hapus karakter tidak valid)
+  const safeName = name.replace(/[^a-zA-Z0-9\s\u00C0-\u024F]/g, "").trim() || "pengguna";
+  return `backup_data : aplikasiku (${safeName}) - ${date}.json`;
+}
+
 export function importAllData(jsonStr: string): { success: boolean; error?: string } {
   try {
     const parsed = JSON.parse(jsonStr);
@@ -693,6 +714,12 @@ export function getCategories(): Category[] {
     const withTransfer = [...cats, { id: "11", name: "Transfer", emoji: "↗️", type: "expense" as const }];
     set(KEYS.CATEGORIES, withTransfer);
     return withTransfer;
+  }
+  // Inject "Saldo Awal" jika belum ada (untuk onboarding)
+  if (!cats.find(c => c.name === "Saldo Awal")) {
+    const withSaldoAwal = [...cats, { id: "12", name: "Saldo Awal", emoji: "💳", type: "income" as const }];
+    set(KEYS.CATEGORIES, withSaldoAwal);
+    return withSaldoAwal;
   }
   return cats;
 }
@@ -1067,6 +1094,54 @@ export function getSettings(): AppSettings {
 
 export function saveSettings(settings: Partial<AppSettings>) {
   set(KEYS.SETTINGS, { ...getSettings(), ...settings });
+}
+
+/** Ambil pengaturan backup, dengan default */
+export function getBackupSettings() {
+  const s = getSettings();
+  return {
+    autoBackupEnabled: s.backup?.autoBackupEnabled ?? false,
+    autoBackupDay: s.backup?.autoBackupDay ?? 0, // 0 = akhir bulan
+    lastAutoBackup: s.backup?.lastAutoBackup ?? null,
+  };
+}
+
+/** Simpan pengaturan backup */
+export function saveBackupSettings(backup: { autoBackupEnabled?: boolean; autoBackupDay?: number; lastAutoBackup?: string }) {
+  const current = getSettings();
+  saveSettings({
+    backup: {
+      autoBackupEnabled: backup.autoBackupEnabled ?? current.backup?.autoBackupEnabled ?? false,
+      autoBackupDay: backup.autoBackupDay ?? current.backup?.autoBackupDay ?? 0,
+      lastAutoBackup: backup.lastAutoBackup ?? current.backup?.lastAutoBackup,
+    },
+  });
+}
+
+/**
+ * Cek apakah hari ini adalah hari backup otomatis.
+ * autoBackupDay = 0 → hari terakhir bulan
+ * autoBackupDay = 1–28 → tanggal spesifik
+ */
+export function shouldAutoBackupToday(): boolean {
+  const { autoBackupEnabled, autoBackupDay, lastAutoBackup } = getBackupSettings();
+  if (!autoBackupEnabled) return false;
+
+  const now = new Date();
+  const today = now.getDate();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  // Tentukan target hari
+  const targetDay = autoBackupDay === 0 ? lastDayOfMonth : autoBackupDay;
+  if (today !== targetDay) return false;
+
+  // Cek apakah sudah backup hari ini
+  if (lastAutoBackup) {
+    const lastDate = new Date(lastAutoBackup).toDateString();
+    if (lastDate === now.toDateString()) return false;
+  }
+
+  return true;
 }
 
 // ─── Format Helpers ────────────────────────────────────────────────

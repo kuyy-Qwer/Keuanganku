@@ -49,6 +49,7 @@ export default function HomePage() {
   const [guardianPrediction, setGuardianPrediction] = useState<CashFlowPrediction | null>(null);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showFundsDetail, setShowFundsDetail] = useState(false);
+  const [showPwaModal, setShowPwaModal] = useState(false);
   
   // PWA Install
   const { isInstallable, isStandalone, isIOS, deferredPrompt } = usePWAInstall();
@@ -64,19 +65,34 @@ export default function HomePage() {
     };
   }, []);
 
-  // Handle PWA Install
+  // Handle PWA Install — deteksi device spesifik
   const handleInstallPWA = async () => {
+    const ua = navigator.userAgent.toLowerCase();
+    const isSamsungBrowser = ua.includes('samsungbrowser');
+    const isFirefox = ua.includes('firefox');
+    const isChrome = ua.includes('chrome') && !ua.includes('edg');
+    const isEdge = ua.includes('edg');
+    const isOpera = ua.includes('opr') || ua.includes('opera');
+
     if (isIOS) {
-      alert('Untuk install di iPhone/iPad:\n1. Tap ikon Share di browser\n2. Pilih "Add to Home Screen"\n3. Tap "Add"');
+      // iOS Safari — instruksi spesifik
+      setShowPwaModal(true);
       return;
     }
+
     if (deferredPrompt) {
+      // Android Chrome / Edge / Samsung — native prompt
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') localStorage.setItem('pwa_installed', 'true');
-    } else {
-      alert('Buka menu browser → "Install app" atau "Add to Home Screen"');
+      if (outcome === 'accepted') {
+        localStorage.setItem('pwa_installed', 'true');
+        setShowPwaModal(false);
+      }
+      return;
     }
+
+    // Fallback — tampilkan modal dengan instruksi sesuai browser
+    setShowPwaModal(true);
   };
 
   useEffect(() => {
@@ -217,101 +233,218 @@ export default function HomePage() {
         </div>
 
         <div className="px-5 mt-6 mb-6">
-          <div id="tour-balance-card" className="relative rounded-[28px] overflow-hidden shadow-[0px_12px_32px_-8px_rgba(4,180,162,0.35)] border border-white/10 transition-all clickable group">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#4edea3] to-[#04b4a2]" />
-            {/* Subtle geometric glow orbs instead of image overlay */}
-            <div className="absolute top-[-40px] right-[-40px] size-48 rounded-full pointer-events-none"
-              style={{ background: "radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 65%)" }} />
-            <div className="absolute bottom-[-30px] left-[-30px] size-36 rounded-full pointer-events-none"
-              style={{ background: "radial-gradient(circle, rgba(0,56,36,0.15) 0%, transparent 65%)" }} />
-            <div className="relative p-6 min-h-[180px] flex flex-col justify-between z-10">
-              <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <p className="font-['Plus_Jakarta_Sans'] font-medium text-[11px] text-[rgba(0,56,36,0.7)] tracking-[0.55px] uppercase">{t("activeBalance", lang)}</p>
-                  <div className="flex gap-1 items-end">
-                    <span className="font-mono font-bold text-[16px] text-[rgba(0,56,36,0.6)] leading-[28px]">Rp</span>
-                    <span className="font-mono font-extrabold tracking-[-0.9px] leading-[40px] transition-all duration-300" 
-                      style={{ 
-                        color: activeFundsTotal < 0 ? "#8b0000" : "#003824",
-                        fontSize: !showBalance ? '32px' : 
-                          activeFundsTotal.toLocaleString("id-ID").length > 13 ? '20px' :
-                          activeFundsTotal.toLocaleString("id-ID").length > 10 ? '24px' :
-                          activeFundsTotal.toLocaleString("id-ID").length > 8 ? '28px' : '32px'
-                      }}>
-                      {showBalance ? activeFundsTotal.toLocaleString("id-ID") : "••••••"}
-                    </span>
+          <div id="tour-balance-card" className="relative rounded-[32px] overflow-hidden transition-all balance-card-themed"
+            style={{
+              background: "linear-gradient(135deg, #0a2e1e 0%, #0d3d28 40%, #0a2e1e 100%)",
+              boxShadow: "0 20px 60px rgba(78,222,163,0.2), 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(78,222,163,0.15)",
+            }}>
+
+            {/* Ambient glow layers */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute -top-16 -right-16 size-56 rounded-full"
+                style={{ background: "radial-gradient(circle, rgba(78,222,163,0.25) 0%, transparent 65%)", filter: "blur(20px)" }} />
+              <div className="absolute -bottom-12 -left-12 size-44 rounded-full"
+                style={{ background: "radial-gradient(circle, rgba(0,180,162,0.2) 0%, transparent 65%)", filter: "blur(16px)" }} />
+              {/* Subtle grid pattern */}
+              <div className="absolute inset-0 opacity-[0.04]"
+                style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(78,222,163,1) 24px, rgba(78,222,163,1) 25px), repeating-linear-gradient(90deg, transparent, transparent 24px, rgba(78,222,163,1) 24px, rgba(78,222,163,1) 25px)" }} />
+            </div>
+
+            <div className="relative z-10 p-6">
+
+              {/* Top row: label + actions */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(78,222,163,0.2)", border: "1px solid rgba(78,222,163,0.3)" }}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#4edea3" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                    </svg>
                   </div>
+                  <span className="font-['Plus_Jakarta_Sans'] font-semibold text-[11px] tracking-[0.12em] uppercase"
+                    style={{ color: "rgba(78,222,163,0.8)" }}>
+                    {t("activeBalance", lang)}
+                  </span>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <button
-                    type="button"
-                    className="bg-[rgba(0,56,36,0.15)] rounded-full px-3 py-1 flex items-center gap-1.5 clickable"
-                    onClick={() => setShowFundsDetail(v => !v)}
-                  >
-                    <span className="text-[14px]">{showFundsDetail ? "✕" : "ℹ️"}</span>
-                    <span className="font-['Plus_Jakarta_Sans'] font-bold text-[10px] text-[#003824] tracking-[0.3px] uppercase">
-                      {showFundsDetail ? L("Tutup", "Close") : L("Detail", "Details")}
-                    </span>
-                  </button>
-                  <button className="bg-[rgba(0,56,36,0.15)] rounded-full px-3 py-1.5 flex items-center gap-1.5 clickable" onClick={() => navigate("/app/achievements")}>
-                     <span className="text-[14px]">🏅</span>
-                     <span className="font-['Plus_Jakarta_Sans'] font-bold text-[10px] text-[#003824] tracking-[0.3px] uppercase">{unlockedCount} Badges</span>
-                  </button>
-                  <div className="bg-[rgba(0,56,36,0.15)] rounded-full px-3 py-1 flex items-center gap-1.5">
-                    <span className="text-[14px]">🔥</span>
-                    <span className="font-['Plus_Jakarta_Sans'] font-bold text-[10px] text-[#003824] tracking-[0.3px]">
-                      {streak.current} {L("hari", "days")} · {userLevel.title}
-                    </span>
-                  </div>
-                </div>
+
+                <button
+                  onClick={() => navigate("/app/achievements")}
+                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all active:scale-95"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span className="text-[11px]">🏅</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[10px]"
+                    style={{ color: "rgba(255,255,255,0.6)" }}>{unlockedCount}</span>
+                </button>
               </div>
-              <div className="flex gap-3 mt-4">
-                <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2 flex-1">
-                  <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">{t("monthlyIn", lang)}</p>
-                  <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#003824]">+{showBalance ? formatRupiah(monthIn) : "Rp••••"}</p>
+
+              {/* Main balance */}
+              <div className="mb-5">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-['Plus_Jakarta_Sans'] font-bold text-[18px]"
+                    style={{ color: "rgba(78,222,163,0.7)" }}>Rp</span>
+                  <span className="font-['Plus_Jakarta_Sans'] font-black tracking-tight leading-none transition-all duration-300"
+                    style={{
+                      color: activeFundsTotal < 0 ? "#fca5a5" : "#ffffff",
+                      fontSize: !showBalance ? '36px' :
+                        activeFundsTotal.toLocaleString("id-ID").length > 13 ? '22px' :
+                        activeFundsTotal.toLocaleString("id-ID").length > 10 ? '26px' :
+                        activeFundsTotal.toLocaleString("id-ID").length > 8 ? '30px' : '36px',
+                      textShadow: activeFundsTotal >= 0 ? "0 0 40px rgba(78,222,163,0.3)" : "none",
+                    }}>
+                    {showBalance ? activeFundsTotal.toLocaleString("id-ID") : "••••••••"}
+                  </span>
                 </div>
-                <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2 flex-1">
-                  <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">{t("monthlyOut", lang)}</p>
-                  <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#003824]">-{showBalance ? formatRupiah(monthOut) : "Rp••••"}</p>
+
+                {/* Streak + level pill */}
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="text-[11px]">🔥</span>
+                    <span className="font-['Plus_Jakarta_Sans'] font-bold text-[10px]"
+                      style={{ color: "rgba(255,255,255,0.65)" }}>
+                      {streak.current} {L("hari", "days")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                    style={{ background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.2)" }}>
+                    <span className="text-[11px]">⭐</span>
+                    <span className="font-['Plus_Jakarta_Sans'] font-bold text-[10px]"
+                      style={{ color: "rgba(251,191,36,0.9)" }}>
+                      {userLevel.title}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {showFundsDetail && activeFundsTotal > 0 && (
-                <div className="grid grid-cols-2 gap-2 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2">
-                    <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">💵 Cash</p>
-                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#003824]">
-                      {showBalance ? formatRupiah(cashBalance) : "Rp••••"}
-                    </p>
+              {/* Divider */}
+              <div className="h-px mb-4" style={{ background: "linear-gradient(90deg, transparent, rgba(78,222,163,0.2), transparent)" }} />
+
+              {/* Income / Expense row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-[16px] px-4 py-3"
+                  style={{ background: "rgba(78,222,163,0.08)", border: "1px solid rgba(78,222,163,0.12)" }}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="size-4 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(78,222,163,0.25)" }}>
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="#4edea3" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                      </svg>
+                    </div>
+                    <p className="font-['Inter'] text-[9px] font-semibold uppercase tracking-wider"
+                      style={{ color: "rgba(78,222,163,0.7)" }}>{t("monthlyIn", lang)}</p>
                   </div>
-                  <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2">
-                    <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">🏦 Bank (available)</p>
-                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#003824]">
-                      {showBalance ? formatRupiah(bankAvailableTotal) : "Rp••••"}
-                    </p>
+                  <p className="font-['Plus_Jakarta_Sans'] font-black text-[14px]" style={{ color: "#4edea3" }}>
+                    {showBalance ? formatRupiah(monthIn) : "Rp••••"}
+                  </p>
+                </div>
+
+                <div className="rounded-[16px] px-4 py-3"
+                  style={{ background: "rgba(252,165,165,0.06)", border: "1px solid rgba(252,165,165,0.1)" }}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="size-4 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(252,165,165,0.2)" }}>
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="#fca5a5" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+                      </svg>
+                    </div>
+                    <p className="font-['Inter'] text-[9px] font-semibold uppercase tracking-wider"
+                      style={{ color: "rgba(252,165,165,0.7)" }}>{t("monthlyOut", lang)}</p>
                   </div>
-                  {emergencyFunds[0] && emergencyFunds[0].isActive && (
-                    <div className="bg-[rgba(239,68,68,0.1)] rounded-[14px] px-4 py-2">
-                      <p className="font-['Inter'] text-[9px] text-[rgba(239,68,68,0.6)]">{L("Dana Darurat", "Emergency Fund")}</p>
-                      <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#ef4444]">
-                        {showBalance ? formatRupiah(emergencyFunds[0].savedAmount) : "Rp••••"}
+                  <p className="font-['Plus_Jakarta_Sans'] font-black text-[14px]" style={{ color: "#fca5a5" }}>
+                    {showBalance ? formatRupiah(monthOut) : "Rp••••"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Detail breakdown — muncul saat showFundsDetail */}
+              {showFundsDetail && (
+                <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {cashBalance <= 0 && bankAvailableTotal <= 0 && lockedSavingsTotal <= 0 && assetsTotal <= 0 ? (
+                    /* Empty state */
+                    <div className="flex flex-col items-center justify-center py-5 gap-2">
+                      <div className="size-10 rounded-full flex items-center justify-center"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.3)" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75" />
+                        </svg>
+                      </div>
+                      <p className="font-['Plus_Jakarta_Sans'] font-semibold text-[12px] text-center"
+                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {L("Belum ada data saldo", "No balance data yet")}
+                      </p>
+                      <p className="font-['Inter'] text-[10px] text-center"
+                        style={{ color: "rgba(255,255,255,0.2)" }}>
+                        {L("Tambahkan saldo cash atau rekening bank", "Add cash balance or bank account")}
                       </p>
                     </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-[14px] px-3 py-2.5"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <p className="font-['Inter'] text-[9px] mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>💵 Cash</p>
+                        <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px]" style={{ color: "rgba(255,255,255,0.85)" }}>
+                          {showBalance ? formatRupiah(cashBalance) : "Rp••••"}
+                        </p>
+                      </div>
+                      <div className="rounded-[14px] px-3 py-2.5"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <p className="font-['Inter'] text-[9px] mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>🏦 Bank</p>
+                        <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px]" style={{ color: "rgba(255,255,255,0.85)" }}>
+                          {showBalance ? formatRupiah(bankAvailableTotal) : "Rp••••"}
+                        </p>
+                      </div>
+                      {emergencyFunds[0] && emergencyFunds[0].isActive && (
+                        <div className="rounded-[14px] px-3 py-2.5"
+                          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+                          <p className="font-['Inter'] text-[9px] mb-1" style={{ color: "rgba(239,68,68,0.6)" }}>🚨 {L("Darurat", "Emergency")}</p>
+                          <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px]" style={{ color: "#fca5a5" }}>
+                            {showBalance ? formatRupiah(emergencyFunds[0].savedAmount) : "Rp••••"}
+                          </p>
+                        </div>
+                      )}
+                      <div className="rounded-[14px] px-3 py-2.5"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <p className="font-['Inter'] text-[9px] mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>🎯 {L("Tabungan", "Savings")}</p>
+                        <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px]" style={{ color: "rgba(255,255,255,0.85)" }}>
+                          {showBalance ? formatRupiah(lockedSavingsTotal) : "Rp••••"}
+                        </p>
+                      </div>
+                      <div className="rounded-[14px] px-3 py-2.5"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <p className="font-['Inter'] text-[9px] mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>🏷️ {L("Aset", "Assets")}</p>
+                        <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px]" style={{ color: "rgba(255,255,255,0.85)" }}>
+                          {showBalance ? formatRupiah(assetsTotal) : "Rp••••"}
+                        </p>
+                      </div>
+                    </div>
                   )}
-                  <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2">
-                    <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">🎯 {L("Tabungan terkunci", "Locked savings")}</p>
-                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#003824]">
-                      {showBalance ? formatRupiah(lockedSavingsTotal) : "Rp••••"}
-                    </p>
-                  </div>
-                  <div className="bg-[rgba(0,56,36,0.1)] rounded-[14px] px-4 py-2">
-                    <p className="font-['Inter'] text-[9px] text-[rgba(0,56,36,0.6)]">🏷️ {L("Aset", "Assets")}</p>
-                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[13px] text-[#003824]">
-                      {showBalance ? formatRupiah(assetsTotal) : "Rp••••"}
-                    </p>
-                  </div>
                 </div>
               )}
+
+              {/* Toggle button — selalu di paling bawah card */}
+              <button
+                type="button"
+                onClick={() => setShowFundsDetail(v => !v)}
+                className="w-full flex items-center justify-center gap-1.5 mt-4 py-2.5 rounded-[14px] transition-all active:scale-[0.98]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}>
+                <span className="font-['Plus_Jakarta_Sans'] font-medium text-[11px]"
+                  style={{ color: "rgba(255,255,255,0.4)" }}>
+                  {showFundsDetail ? L("Sembunyikan detail", "Hide details") : L("Lihat detail saldo", "View balance details")}
+                </span>
+                <svg
+                  className="w-3.5 h-3.5 transition-transform duration-300"
+                  style={{
+                    color: "rgba(255,255,255,0.4)",
+                    transform: showFundsDetail ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+
             </div>
           </div>
         </div>
@@ -644,7 +777,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* ── PWA Install Button (bottom of page, only when installable & not standalone) ── */}
+        {/* ── PWA Install Button ── */}
         {(isInstallable || isIOS) && !isStandalone && (
           <div className="px-5 mb-6">
             <button
@@ -664,13 +797,89 @@ export default function HomePage() {
                   {L('Install Keuanganku', 'Install Keuanganku')}
                 </p>
                 <p className="text-xs" style={{ color: 'var(--app-text2)' }}>
-                  {L('Akses cepat dari home screen', 'Quick access from home screen')}
+                  {isIOS
+                    ? L('Tambahkan ke Home Screen iPhone/iPad', 'Add to iPhone/iPad Home Screen')
+                    : L('Install sebagai aplikasi di HP kamu', 'Install as app on your phone')}
                 </p>
               </div>
               <svg className="w-4 h-4 ml-auto shrink-0" fill="none" viewBox="0 0 24 24" stroke="#4edea3" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
+          </div>
+        )}
+
+        {/* PWA Install Modal — instruksi sesuai device */}
+        {showPwaModal && (
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowPwaModal(false)}>
+            <div className="w-full max-w-[390px] rounded-[28px] overflow-hidden shadow-2xl mb-4 animate-in slide-in-from-bottom-4 duration-300"
+              style={{ backgroundColor: "var(--app-card)" }}
+              onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className="px-6 pt-6 pb-4 text-center"
+                style={{ background: "linear-gradient(135deg, rgba(78,222,163,0.12), rgba(0,180,162,0.06))", borderBottom: "1px solid var(--app-border)" }}>
+                <div className="size-14 rounded-[18px] mx-auto mb-3 flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #4edea3, #00b4a2)", boxShadow: "0 8px 24px rgba(78,222,163,0.4)" }}>
+                  <span className="text-[28px]">📲</span>
+                </div>
+                <h3 className="font-['Plus_Jakarta_Sans'] font-extrabold text-[17px] mb-1" style={{ color: "var(--app-text)" }}>
+                  {L("Install Keuanganku", "Install Keuanganku")}
+                </h3>
+                <p className="font-['Inter'] text-[12px]" style={{ color: "var(--app-text2)" }}>
+                  {L("Akses lebih cepat dari layar utama HP kamu", "Faster access from your phone's home screen")}
+                </p>
+              </div>
+
+              {/* Instruksi */}
+              <div className="px-6 py-5 space-y-3">
+                {isIOS ? (
+                  // iOS Safari
+                  <>
+                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px] uppercase tracking-wider" style={{ color: "#4edea3" }}>
+                      iPhone / iPad (Safari)
+                    </p>
+                    {[
+                      { icon: "1️⃣", text: L('Tap ikon Share (kotak dengan panah ke atas) di toolbar Safari', 'Tap the Share icon (box with arrow) in Safari toolbar') },
+                      { icon: "2️⃣", text: L('Scroll ke bawah dan pilih "Tambahkan ke Layar Utama"', 'Scroll down and tap "Add to Home Screen"') },
+                      { icon: "3️⃣", text: L('Tap "Tambahkan" di pojok kanan atas', 'Tap "Add" in the top right corner') },
+                    ].map((step, i) => (
+                      <div key={i} className="flex items-start gap-3 rounded-[14px] p-3"
+                        style={{ backgroundColor: "var(--app-card2)" }}>
+                        <span className="text-[18px] shrink-0">{step.icon}</span>
+                        <p className="font-['Inter'] text-[13px] leading-relaxed" style={{ color: "var(--app-text)" }}>{step.text}</p>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  // Android / Desktop
+                  <>
+                    <p className="font-['Plus_Jakarta_Sans'] font-bold text-[12px] uppercase tracking-wider" style={{ color: "#4edea3" }}>
+                      {L("Android / Desktop", "Android / Desktop")}
+                    </p>
+                    {[
+                      { icon: "1️⃣", text: L('Tap menu ⋮ (tiga titik) di pojok kanan atas browser', 'Tap the ⋮ menu (three dots) in the top right of your browser') },
+                      { icon: "2️⃣", text: L('Pilih "Install aplikasi" atau "Tambahkan ke layar utama"', 'Select "Install app" or "Add to home screen"') },
+                      { icon: "3️⃣", text: L('Konfirmasi dengan tap "Install" atau "Tambahkan"', 'Confirm by tapping "Install" or "Add"') },
+                    ].map((step, i) => (
+                      <div key={i} className="flex items-start gap-3 rounded-[14px] p-3"
+                        style={{ backgroundColor: "var(--app-card2)" }}>
+                        <span className="text-[18px] shrink-0">{step.icon}</span>
+                        <p className="font-['Inter'] text-[13px] leading-relaxed" style={{ color: "var(--app-text)" }}>{step.text}</p>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                <button
+                  onClick={() => setShowPwaModal(false)}
+                  className="w-full rounded-[16px] py-3.5 font-['Plus_Jakarta_Sans'] font-bold text-[14px] mt-2 transition-all active:scale-[0.98]"
+                  style={{ background: "linear-gradient(135deg, #4edea3, #00b4a2)", color: "#003824" }}>
+                  {L("Mengerti", "Got it")}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

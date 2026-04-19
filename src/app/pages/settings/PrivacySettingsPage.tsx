@@ -2,7 +2,6 @@ import { useNavigate } from "react-router";
 import { useState } from "react";
 import { getSettings, saveSettings, type AppSettings } from "../../store/database";
 import { useLang, t } from "../../i18n";
-
 export default function PrivacySettingsPage() {
   const navigate = useNavigate();
   const lang = useLang();

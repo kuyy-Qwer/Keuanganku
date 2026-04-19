@@ -9,7 +9,6 @@ import { useLang } from "../../i18n";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { playAlertSound } from "../../lib/sounds";
 import { crudDeleteSuccess, crudSuccess } from "../../lib/notify";
-
 const EMOJI_OPTIONS = ["🍔","🚗","🛍️","📄","🎮","💊","💵","💻","📈","💰","🏠","✈️","📚","🎬","🐕","☕","🎵","👕","💡","🎁","🍕","🎨","⚽","🔧","📱","🧹"];
 
 function parseNum(val: string): number {

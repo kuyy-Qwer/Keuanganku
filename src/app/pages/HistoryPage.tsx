@@ -194,13 +194,13 @@ export default function HistoryPage() {
                   className="flex-1 py-2 rounded-full font-semibold text-[12px] transition-all flex items-center justify-center"
                   style={{
                     backgroundColor: active
-                      ? (f === "expense" ? "rgba(255,180,171,0.12)" : f === "income" ? "rgba(78,222,163,0.12)" : "rgba(255,255,255,0.08)")
+                      ? (f === "expense" ? "rgba(239,68,68,0.1)" : f === "income" ? "rgba(78,222,163,0.12)" : "var(--app-card2)")
                       : "var(--app-card)",
                     color: active
-                      ? (f === "expense" ? "#ffb4ab" : f === "income" ? "#4edea3" : "var(--app-text)")
+                      ? (f === "expense" ? "var(--app-danger)" : f === "income" ? "#4edea3" : "var(--app-text)")
                       : "var(--app-text2)",
                     border: active
-                      ? `1px solid ${f === "expense" ? "rgba(255,180,171,0.3)" : f === "income" ? "rgba(78,222,163,0.3)" : "rgba(255,255,255,0.15)"}`
+                      ? `1px solid ${f === "expense" ? "var(--app-danger-border)" : f === "income" ? "rgba(78,222,163,0.3)" : "var(--app-border)"}`
                       : "1px solid var(--app-border)",
                   }}>
                   <span aria-hidden="true">
@@ -257,13 +257,21 @@ export default function HistoryPage() {
             style={{ backgroundColor: "var(--app-card)", borderColor: "var(--app-border)" }}>
             <button
               onClick={() => { setCategoryFilter("all"); setShowCatPicker(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all ${categoryFilter === "all" ? "bg-[rgba(255,255,255,0.08)] text-white" : "text-[#64748b]"}`}>
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all`}
+              style={{
+                backgroundColor: categoryFilter === "all" ? "var(--app-card2)" : "transparent",
+                color: categoryFilter === "all" ? "var(--app-text)" : "var(--app-text2)",
+              }}>
               <span>🌐</span> {L("Semua Kategori", "All Categories")}
             </button>
             {allCategories.map(cat => (
               <button key={cat}
                 onClick={() => { setCategoryFilter(cat); setShowCatPicker(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all ${categoryFilter === cat ? "bg-[rgba(96,165,250,0.1)] text-[#60a5fa]" : "text-[#94a3b8]"}`}>
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all`}
+                style={{
+                  backgroundColor: categoryFilter === cat ? "rgba(96,165,250,0.1)" : "transparent",
+                  color: categoryFilter === cat ? "#60a5fa" : "var(--app-text2)",
+                }}>
                 <span>{categoryEmojiMap[cat] ?? "💳"}</span>
                 <span className="flex-1 text-left">{cat}</span>
                 {categoryFilter === cat && <span className="text-[10px]">✓</span>}
@@ -334,8 +342,10 @@ export default function HistoryPage() {
                           {tx.type === "income" ? "+" : "-"}Rp{formatNumber(tx.amount)}
                         </p>
                         <button onClick={e => { e.stopPropagation(); confirmDelete(tx.id); }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity bg-[rgba(255,180,171,0.1)] rounded-full p-1.5">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="#ffb4ab" strokeWidth={2}>
+                          className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full p-1.5"
+                          style={{ backgroundColor: "var(--app-danger-bg)" }}>
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2}
+                            style={{ stroke: "var(--app-danger)" }}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                           </svg>
                         </button>
@@ -532,7 +542,7 @@ export default function HistoryPage() {
                     </span>
                     {selectedTx.receipt?.codeType && (
                       <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full"
-                        style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--app-text2)" }}>
+                        style={{ backgroundColor: "var(--app-card2)", color: "var(--app-text2)" }}>
                         {selectedTx.receipt.codeType}
                       </span>
                     )}
@@ -572,8 +582,12 @@ export default function HistoryPage() {
             <div className="px-6 pb-6 pt-3 flex gap-3">
               <button
                 onClick={() => { setSelectedTx(null); confirmDelete(selectedTx.id); }}
-                className="flex-1 h-[48px] rounded-[16px] font-['Plus_Jakarta_Sans'] font-bold text-[13px] flex items-center justify-center gap-2 border border-[rgba(255,100,100,0.25)] text-[#ffb4ab] active:scale-95 transition-all"
-                style={{ backgroundColor: "rgba(255,100,100,0.08)" }}>
+                className="flex-1 h-[48px] rounded-[16px] font-['Plus_Jakarta_Sans'] font-bold text-[13px] flex items-center justify-center gap-2 active:scale-95 transition-all"
+                style={{
+                  backgroundColor: "var(--app-danger-bg)",
+                  border: "1px solid var(--app-danger-border)",
+                  color: "var(--app-danger)",
+                }}>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>

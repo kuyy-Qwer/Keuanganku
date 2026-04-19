@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AppLogo from "./AppLogo";
 
 interface SplashScreenProps {
   onDone: () => void;

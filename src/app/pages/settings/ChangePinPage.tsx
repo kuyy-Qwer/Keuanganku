@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { getUser, saveUser } from "../../store/database";
 import { useLang } from "../../i18n";
 import { resetLoginAttempts, validatePinStrength } from "../../lib/pinSecurity";
-
 export default function ChangePinPage() {
   const navigate = useNavigate();
   const lang = useLang();
@@ -15,15 +14,23 @@ export default function ChangePinPage() {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [storedPin, setStoredPin] = useState("");
+  const [hasExistingPin, setHasExistingPin] = useState(false);
 
-  useEffect(() => { setStoredPin(getUser().pin); }, []);
+  useEffect(() => {
+    const pin = getUser().pin;
+    setStoredPin(pin || "");
+    // Check if user has a custom PIN (not empty or default "123456")
+    setHasExistingPin(!!(pin && pin.trim() !== "" && pin !== "123456"));
+  }, []);
 
   const handleSubmit = () => {
-    if (currentPin !== storedPin) {
+    // If user has existing PIN, validate current PIN
+    if (hasExistingPin && currentPin !== storedPin) {
       setStatus("error");
       setErrorMsg(L("PIN saat ini salah", "Current PIN is incorrect"));
       return;
     }
+    
     const pinError = validatePinStrength(newPin, L);
     if (pinError) {
       setStatus("error");
@@ -38,6 +45,7 @@ export default function ChangePinPage() {
     saveUser({ pin: newPin });
     resetLoginAttempts();
     setStoredPin(newPin);
+    setHasExistingPin(true);
     setStatus("success");
     setErrorMsg("");
     setTimeout(() => {
@@ -59,7 +67,9 @@ export default function ChangePinPage() {
             </svg>
           </button>
           <h1 className="font-['Plus_Jakarta_Sans'] font-extrabold text-[18px]"
-            style={{ color: "var(--app-text)" }}>{L("Ubah PIN", "Change PIN")}</h1>
+            style={{ color: "var(--app-text)" }}>
+            {hasExistingPin ? L("Ubah PIN", "Change PIN") : L("Buat PIN", "Create PIN")}
+          </h1>
         </div>
 
         <div className="rounded-[16px] p-4 flex gap-3"
@@ -67,26 +77,30 @@ export default function ChangePinPage() {
           <span className="text-[20px]">🔒</span>
           <p className="font-['Inter'] text-[13px] leading-relaxed"
             style={{ color: "var(--app-text2)" }}>
-            {L("Gunakan PIN 6 digit yang tidak berurutan dan tidak berulang agar akun lebih aman.", "Use a 6-digit PIN that is not sequential or repetitive to keep the account safer.")}
+            {hasExistingPin
+              ? L("Gunakan PIN 6 digit yang tidak berurutan dan tidak berulang agar akun lebih aman.", "Use a 6-digit PIN that is not sequential or repetitive to keep the account safer.")
+              : L("Buat PIN 6 digit untuk mengamankan aplikasi. PIN akan diminta saat membuka aplikasi.", "Create a 6-digit PIN to secure the app. PIN will be required when opening the app.")}
           </p>
         </div>
 
         {status === "error" && (
           <div className="rounded-[12px] p-3"
-            style={{ backgroundColor: "rgba(255,180,171,0.1)", border: "1px solid rgba(255,180,171,0.2)" }}>
-            <p className="font-['Inter'] text-[13px] text-[#ffb4ab]">⚠️ {errorMsg}</p>
+            style={{ backgroundColor: "var(--app-danger-bg)", border: "1px solid var(--app-danger-border)" }}>
+            <p className="font-['Inter'] text-[13px]" style={{ color: "var(--app-danger)" }}>⚠️ {errorMsg}</p>
           </div>
         )}
         {status === "success" && (
           <div className="rounded-[12px] p-3"
             style={{ backgroundColor: "rgba(78,222,163,0.1)", border: "1px solid rgba(78,222,163,0.2)" }}>
             <p className="font-['Inter'] text-[13px] text-[#4edea3]">
-              ✓ {L("PIN berhasil diubah!", "PIN changed successfully!")}
+              ✓ {hasExistingPin 
+                ? L("PIN berhasil diubah!", "PIN changed successfully!")
+                : L("PIN berhasil dibuat!", "PIN created successfully!")}
             </p>
           </div>
         )}
 
-        <PinInput label={L("PIN SAAT INI", "CURRENT PIN")} value={currentPin} onChange={setCurrentPin} />
+        {hasExistingPin && <PinInput label={L("PIN SAAT INI", "CURRENT PIN")} value={currentPin} onChange={setCurrentPin} />}
         <PinInput label={L("PIN BARU", "NEW PIN")} value={newPin} onChange={setNewPin} />
         <PinInput label={L("KONFIRMASI PIN BARU", "CONFIRM NEW PIN")} value={confirmPin} onChange={setConfirmPin} />
 
@@ -94,7 +108,7 @@ export default function ChangePinPage() {
           className="w-full rounded-[16px] py-4 shadow-[0px_12px_40px_rgba(0,209,139,0.3)] active:scale-[0.98] transition-all mt-4"
           style={{ backgroundColor: "#00d18b" }}>
           <span className="font-['Inter'] font-semibold text-[15px] text-[#060e20] tracking-[1px] uppercase">
-            {L("Update PIN", "Update PIN")}
+            {hasExistingPin ? L("Update PIN", "Update PIN") : L("Buat PIN", "Create PIN")}
           </span>
         </button>
       </div>

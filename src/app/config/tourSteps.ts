@@ -37,21 +37,7 @@ export const onboardingTourSteps: TourStep[] = [
     },
   },
 
-  // ── 3. Pilih kategori — sorot tombol dropdown kategori ────────────
-  {
-    target: '#tour-tx-category-btn',   // tombol dropdown, bukan seluruh area
-    title: 'Pilih Kategori',
-    titleEn: 'Choose Category',
-    content: 'Tap di sini lalu pilih kategori yang sesuai, misalnya "Makanan".',
-    contentEn: 'Tap here then choose the right category, e.g. "Food".',
-    position: 'bottom',
-    highlightPadding: 6,
-    requireInteraction: true,
-    completionAction: 'category-select',
-    action: () => {},
-  },
-
-  // ── 4. Isi nominal ────────────────────────────────────────────────
+  // ── 3. Isi nominal dulu ───────────────────────────────────────────
   {
     target: '#tour-tx-amount',
     title: 'Isi Nominal',
@@ -68,6 +54,20 @@ export const onboardingTourSteps: TourStep[] = [
         if (inp) inp.focus();
       }, 300);
     },
+  },
+
+  // ── 4. Pilih kategori — setelah nominal diisi ─────────────────────
+  {
+    target: '#tour-tx-category-btn',
+    title: 'Pilih Kategori',
+    titleEn: 'Choose Category',
+    content: 'Tap di sini lalu pilih kategori yang sesuai, misalnya "Makanan".',
+    contentEn: 'Tap here then choose the right category, e.g. "Food".',
+    position: 'bottom',
+    highlightPadding: 6,
+    requireInteraction: true,
+    completionAction: 'category-select',
+    action: () => {},
   },
 
   // ── 5. Simpan ─────────────────────────────────────────────────────

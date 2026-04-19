@@ -3,27 +3,19 @@ importScripts('https://js.pusher.com/beams/service-worker.js');
 
 const CACHE_NAME = 'keuanganku-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
   '/manifest.json',
-  '/icon-72x72.png',
-  '/icon-96x96.png',
-  '/icon-128x128.png',
-  '/icon-144x144.png',
-  '/icon-152x152.png',
-  '/icon-192x192.png',
-  '/icon-384x384.png',
-  '/icon-512x512.png',
-  '/service-worker.js',
-  '/splash-iphone5.png',
-  '/splash-iphone6.png',
-  '/splash-iphoneplus.png',
-  '/splash-iphonex.png',
-  '/splash-ipad.png'
+  '/icon.svg',
 ];
+
+// Jangan aktifkan caching saat development (localhost)
+const isDev = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
 
 // Install service worker dan cache resources
 self.addEventListener('install', (event) => {
+  if (isDev) {
+    self.skipWaiting();
+    return;
+  }
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -50,78 +42,92 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch strategy: Cache First, fallback to network
+// Fetch strategy: Network First di dev, Cache First di production
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and chrome-extension
+  // Skip non-GET requests dan chrome-extension
   if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
     return;
   }
 
+  // Di development: selalu fetch dari network, jangan intercept apapun
+  if (isDev) {
+    return;
+  }
+
+  // Di production: skip WebSocket dan Vite HMR
+  const url = new URL(event.request.url);
+  if (url.protocol === 'ws:' || url.protocol === 'wss:') {
+    return;
+  }
+
+  // Jangan cache HTML — selalu ambil dari network agar app selalu up-to-date
+  if (event.request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // Cache First untuk assets statis (gambar, font, dll)
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
-        // Return cached response if found
         if (cachedResponse) {
           return cachedResponse;
         }
 
-        // Otherwise fetch from network
         return fetch(event.request)
           .then((response) => {
-            // Check if we received a valid response
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
 
-            // Clone the response
             const responseToCache = response.clone();
-
-            // Cache the new response
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
 
             return response;
           })
-          .catch(() => {
-            // If both cache and network fail, show offline page
-            return caches.match('/index.html');
-          });
+          .catch(() => caches.match('/index.html'));
       })
   );
 });
 
-// Push notifications handler
+// Push notifications handler — Pusher Beams format
 self.addEventListener('push', (event) => {
-  const data = event.data?.json();
-  
-  if (data) {
-    const options = {
-      body: data.notification.body,
-      icon: data.notification.icon || '/icon-192.png',
-      badge: '/badge-72.png',
-      vibrate: [200, 100, 200],
-      data: data.notification.data,
-      actions: [
-        {
-          action: 'open',
-          title: 'Buka Aplikasi'
-        },
-        {
-          action: 'dismiss',
-          title: 'Tutup'
-        }
-      ],
-      tag: 'financial-notification',
-      renotify: true,
-      requireInteraction: true
-    };
+  if (!event.data) return;
 
-    event.waitUntil(
-      self.registration.showNotification(data.notification.title, options)
-    );
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    // Fallback jika bukan JSON
+    payload = { notification: { title: 'Keuanganku', body: event.data.text() } };
   }
+
+  // Pusher Beams mengirim: { notification: { title, body, icon, data } }
+  const notification = payload.notification ?? payload;
+  const title = notification.title ?? 'Keuanganku';
+  const body = notification.body ?? '';
+  const icon = notification.icon ?? '/icon.svg';
+  const data = notification.data ?? {};
+
+  const options = {
+    body,
+    icon,
+    badge: '/icon.svg',
+    vibrate: [200, 100, 200],
+    data: { ...data, url: '/' },
+    tag: data.tag ?? `luminary-${Date.now()}`,
+    renotify: false,
+    requireInteraction: false,
+    silent: false,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
 });
 
 // Notification click handler

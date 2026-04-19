@@ -47,15 +47,24 @@
 
 /* Light Theme - Green Based */
 [data-theme="light"] {
-  --app-bg: #f8fafc;           /* Light background */
-  --app-card: #ffffff;         /* White cards */
-  --app-card2: #f0fdf4;        /* Light green cards */
-  --app-text: #1f2937;         /* Dark text */
-  --app-text2: #6b7280;        /* Gray text */
-  --app-border: rgba(0, 180, 162, 0.1); /* Light green border */
+  --app-bg: #f8fafc;
+  --app-card: #ffffff;
+  --app-card2: #f0fdf4;
+  --app-text: #1f2937;
+  --app-text2: #6b7280;
+  --app-border: rgba(0, 180, 162, 0.1);
   --app-nav-bg: rgba(248, 250, 252, 0.95);
   --app-shadow: 0 4px 20px rgba(78, 222, 163, 0.1);
   --app-hover: rgba(78, 222, 163, 0.05);
+  /* Extra semantic tokens for light mode */
+  --app-input-bg: #f0fdf4;
+  --app-keypad-bg: #f0fdf4;
+  --app-keypad-border: rgba(0,180,162,0.12);
+  --app-pin-dot-empty: #d1fae5;
+  --app-pin-dot-filled: #10b981;
+  --app-danger: #dc2626;
+  --app-danger-bg: rgba(220,38,38,0.06);
+  --app-danger-border: rgba(220,38,38,0.2);
 }
 
 /* Dark Theme - Green Based */

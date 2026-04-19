@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import SplashIntroPage from './SplashIntroPage';
@@ -16,53 +16,50 @@ function getRequestedStep(pathname: string): StepName {
   if (pathname === '/' || pathname === '/onboarding') return 'splash';
   const match = pathname.match(/\/onboarding\/([^/]+)/);
   const pathStep = match?.[1] as StepName | undefined;
-  const storedStep = localStorage.getItem('onboarding_step') as StepName | null;
 
+  // Only use path-based step — ignore localStorage fallback to avoid stale redirects
   if (pathStep && STEP_ORDER.includes(pathStep)) return pathStep;
-  if (storedStep && STEP_ORDER.includes(storedStep)) return storedStep;
   return 'splash';
 }
 
-function getResolvedStep(requestedStep: StepName): StepName {
+function getMaxAllowedStep(): StepName {
   const onboardingCompleted = localStorage.getItem('onboarding_completed') === 'true';
   if (onboardingCompleted) return 'tutorial';
 
   const termsAccepted = localStorage.getItem('onboarding_terms_accepted') === 'true';
-  const walletSetup = !!localStorage.getItem('wallet_setup') || getCashWalletBalance() > 0 || getBankAccounts().length > 0;
+  const walletSetup =
+    !!localStorage.getItem('wallet_setup') ||
+    getCashWalletBalance() > 0 ||
+    getBankAccounts().length > 0;
   const user = getUser();
   const hasProfile = !!(user.fullName?.trim() && user.email?.trim() && user.dob?.trim());
 
-  // Determine max allowed step
-  let maxAllowed: StepName = 'splash';
-  if (true) maxAllowed = 'welcome'; // splash always accessible
-  if (termsAccepted) maxAllowed = 'profile';
-  if (termsAccepted && hasProfile) maxAllowed = 'wallet';
-  if (termsAccepted && hasProfile && walletSetup) maxAllowed = 'tutorial';
+  // Determine max allowed step based on completed prerequisites
+  if (termsAccepted && hasProfile && walletSetup) return 'tutorial';
+  if (termsAccepted && hasProfile) return 'wallet';
+  if (termsAccepted) return 'profile';
+  // splash and welcome are always accessible
+  return 'welcome';
+}
+
+function getResolvedStep(requestedStep: StepName): StepName {
+  const maxAllowed = getMaxAllowedStep();
 
   const requestedIndex = STEP_ORDER.indexOf(requestedStep);
   const maxIndex = STEP_ORDER.indexOf(maxAllowed);
 
+  // Allow going back freely, but cap forward navigation at maxAllowed
   if (requestedIndex <= maxIndex) return requestedStep;
   return maxAllowed;
 }
 
 export default function OnboardingWrapper() {
   const location = useLocation();
-  const onboardingCompleted = localStorage.getItem('onboarding_completed') === 'true';
 
-  if (onboardingCompleted && (location.pathname === '/' || location.pathname.startsWith('/onboarding'))) {
-    return <Navigate to="/app" replace />;
-  }
-
+  // All hooks must be called unconditionally before any early returns
   const requestedStep = getRequestedStep(location.pathname);
   const resolvedStep = getResolvedStep(requestedStep);
   const previousStepRef = useRef<StepName>(resolvedStep);
-
-  // Redirect if trying to access a step not yet allowed
-  if (requestedStep !== resolvedStep) {
-    const target = resolvedStep === 'splash' ? '/' : `/onboarding/${resolvedStep}`;
-    return <Navigate to={target} replace />;
-  }
 
   const currentIndex = STEP_ORDER.indexOf(resolvedStep);
   const previousIndex = STEP_ORDER.indexOf(previousStepRef.current);
@@ -71,6 +68,18 @@ export default function OnboardingWrapper() {
   useEffect(() => {
     previousStepRef.current = resolvedStep;
   }, [resolvedStep]);
+
+  // If onboarding is completed, redirect to app
+  const onboardingCompleted = localStorage.getItem('onboarding_completed') === 'true';
+  if (onboardingCompleted) {
+    return <Navigate to="/app" replace />;
+  }
+
+  // Redirect if trying to access a step not yet allowed
+  if (requestedStep !== resolvedStep) {
+    const target = resolvedStep === 'splash' ? '/' : `/onboarding/${resolvedStep}`;
+    return <Navigate to={target} replace />;
+  }
 
   // Splash has its own full-screen treatment — no wrapper animation
   if (resolvedStep === 'splash') {
@@ -92,10 +101,15 @@ export default function OnboardingWrapper() {
       <motion.div
         key={resolvedStep}
         custom={direction}
-        initial={(d) => ({ opacity: 0, y: d > 0 ? 40 : -40, scale: 0.985, filter: 'blur(8px)' })}
-        animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-        exit={(d) => ({ opacity: 0, y: d > 0 ? -28 : 28, scale: 0.992, filter: 'blur(6px)' })}
-        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+        variants={{
+          enter: (d: number) => ({ opacity: 0, y: d > 0 ? 20 : -20 }),
+          center: { opacity: 1, y: 0 },
+          exit: (d: number) => ({ opacity: 0, y: d > 0 ? -20 : 20 }),
+        }}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={{ duration: 0.3, ease: 'easeOut' }}
       >
         {renderStep()}
       </motion.div>

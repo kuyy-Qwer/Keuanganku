@@ -47,8 +47,24 @@ export function destroySession(): void {
   sessionStorage.removeItem(SESSION_KEY);
 }
 
+/** Check if user has set a PIN in settings */
+export function userHasPin(): boolean {
+  try {
+    const raw = localStorage.getItem("luminary_user");
+    if (!raw) return false;
+    const user = JSON.parse(raw);
+    // Check if PIN exists and is not empty or default "123456"
+    return user.pin && user.pin.trim() !== "" && user.pin !== "123456";
+  } catch {
+    return false;
+  }
+}
+
 /** Check if a valid session exists and is not expired due to inactivity */
 export function isAuthenticated(): boolean {
+  // If user hasn't set a PIN, they don't need to login
+  if (!userHasPin()) return true;
+
   const session = readSession();
   if (!session) return false;
 

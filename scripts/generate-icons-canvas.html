@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Icons from SVG</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 20px 0; }
+        .icon-item { text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .icon-item img { max-width: 100%; height: auto; }
+        button { background: #0b1326; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #1e293b; }
+        #progress { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Generate Icons for Keuanganku PWA</h1>
+        <p>Tool ini akan menggenerate semua ukuran icon PNG yang diperlukan dari SVG logo Anda.</p>
+        
+        <button onclick="generateAllIcons()">🚀 Generate All Icons</button>
+        <button onclick="downloadAll()">📦 Download All as ZIP</button>
+        
+        <div id="progress"></div>
+        <div id="icons" class="icon-grid"></div>
+    </div>
+
+    <script>
+        const iconSizes = [
+            { size: 16, name: 'favicon-16x16.png', desc: 'Favicon 16x16' },
+            { size: 32, name: 'favicon-32x32.png', desc: 'Favicon 32x32' },
+            { size: 72, name: 'icon-72x72.png', desc: 'Android Chrome' },
+            { size: 96, name: 'icon-96x96.png', desc: 'Android Chrome' },
+            { size: 128, name: 'icon-128x128.png', desc: 'Android Chrome' },
+            { size: 144, name: 'icon-144x144.png', desc: 'Windows Tile' },
+            { size: 152, name: 'icon-152x152.png', desc: 'iOS Safari' },
+            { size: 180, name: 'apple-touch-icon.png', desc: 'iOS Home Screen' },
+            { size: 192, name: 'icon-192x192.png', desc: 'Android Chrome' },
+            { size: 384, name: 'icon-384x384.png', desc: 'Android Chrome' },
+            { size: 512, name: 'icon-512x512.png', desc: 'Android Chrome' }
+        ];
+
+        const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background gelap dengan sudut tumpul (untuk PWA icon di layar HP) -->
+  <rect width="512" height="512" rx="110" fill="#0b1326"/>
+  <!-- Glow background -->
+  <circle cx="256" cy="220" r="180" fill="url(#bgGlow)" opacity="0.3"/>
+
+  <!-- Panah hijau melengkung -->
+  <path d="M 88 345 Q 256 470 424 345" stroke="#22c55e" stroke-width="34" fill="none" stroke-linecap="round"/>
+  <polygon points="424,312 455,358 392,362" fill="#22c55e"/>
+
+  <!-- Uang hijau -->
+  <rect x="130" y="238" width="138" height="86" rx="11" fill="#15803d" transform="rotate(-8,199,281)"/>
+  <rect x="135" y="243" width="138" height="86" rx="11" fill="#16a34a" transform="rotate(-3,204,286)"/>
+  <rect x="140" y="248" width="138" height="86" rx="11" fill="#4ade80"/>
+  <rect x="156" y="268" width="96" height="7" rx="3.5" fill="#15803d" opacity="0.6"/>
+  <rect x="156" y="283" width="72" height="7" rx="3.5" fill="#15803d" opacity="0.6"/>
+  <circle cx="205" cy="291" r="20" fill="#15803d" opacity="0.75"/>
+  <text x="205" y="298" text-anchor="middle" font-size="22" font-weight="bold" fill="white" font-family="Arial">$</text>
+
+  <!-- Bar chart biru -->
+  <rect x="228" y="196" width="40" height="126" rx="9" fill="url(#b1)"/>
+  <rect x="278" y="148" width="40" height="174" rx="9" fill="url(#b2)"/>
+  <rect x="328" y="100" width="40" height="222" rx="9" fill="url(#b3)"/>
+
+  <!-- Highlight 3D -->
+  <rect x="232" y="200" width="13" height="65" rx="5" fill="white" opacity="0.25"/>
+  <rect x="282" y="152" width="13" height="85" rx="5" fill="white" opacity="0.25"/>
+  <rect x="332" y="104" width="13" height="110" rx="5" fill="white" opacity="0.25"/>
+
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#4edea3"/>
+      <stop offset="100%" style="stop-color:transparent"/>
+    </radialGradient>
+    <linearGradient id="b1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="b2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#93c5fd"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <linearGradient id="b3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#bfdbfe"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+  </defs>
+</svg>`;
+
+        let generatedIcons = [];
+
+        function updateProgress(message) {
+            document.getElementById('progress').innerHTML = message;
+        }
+
+        function svgToPng(svgString, size) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = size;
+                canvas.height = size;
+
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, size, size);
+                    canvas.toBlob(resolve, 'image/png');
+                };
+
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(svgBlob);
+                img.src = url;
+            });
+        }
+
+        async function generateAllIcons() {
+            updateProgress('🎨 Generating icons...');
+            const iconsContainer = document.getElementById('icons');
+            iconsContainer.innerHTML = '';
+            generatedIcons = [];
+
+            for (let i = 0; i < iconSizes.length; i++) {
+                const iconConfig = iconSizes[i];
+                updateProgress(`Generating ${iconConfig.name} (${i + 1}/${iconSizes.length})`);
+
+                try {
+                    const blob = await svgToPng(svgContent, iconConfig.size);
+                    const url = URL.createObjectURL(blob);
+                    
+                    generatedIcons.push({
+                        name: iconConfig.name,
+                        blob: blob,
+                        url: url
+                    });
+
+                    // Display icon
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'icon-item';
+                    iconDiv.innerHTML = `
+                        <img src="${url}" alt="${iconConfig.name}">
+                        <div><strong>${iconConfig.size}x${iconConfig.size}</strong></div>
+                        <div>${iconConfig.desc}</div>
+                        <button onclick="downloadIcon('${iconConfig.name}', '${url}')">Download</button>
+                    `;
+                    iconsContainer.appendChild(iconDiv);
+                } catch (error) {
+                    console.error(`Error generating ${iconConfig.name}:`, error);
+                }
+            }
+
+            updateProgress(`✅ Generated ${generatedIcons.length} icons successfully!`);
+        }
+
+        function downloadIcon(filename, url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+        }
+
+        async function downloadAll() {
+            if (generatedIcons.length === 0) {
+                alert('Please generate icons first!');
+                return;
+            }
+
+            updateProgress('📦 Preparing ZIP download...');
+            
+            // Simple ZIP creation (you might want to use a library like JSZip for better compression)
+            const zip = new JSZip();
+            
+            for (const icon of generatedIcons) {
+                zip.file(icon.name, icon.blob);
+            }
+            
+            const zipBlob = await zip.generateAsync({type: 'blob'});
+            const url = URL.createObjectURL(zipBlob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'keuanganku-icons.zip';
+            a.click();
+            
+            updateProgress('✅ ZIP download started!');
+        }
+    </script>
+    
+    <!-- Include JSZip for ZIP functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</body>
+</html>

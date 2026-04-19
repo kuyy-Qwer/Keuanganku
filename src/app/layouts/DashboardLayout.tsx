@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import TransactionInputWithNotesGoPayInspired from "../../imports/TransactionInputWithNotesGoPayInspired/TransactionInputWithNotesGoPayInspired";
 import { useLang, t, type Lang } from "../i18n";
 import { getSettings, isExtremeSavingMode, getDisciplineState, isInvestFrozen } from "../store/database";
+import { dispatchNotif } from "../lib/notify";
 import GuidedTour from "../components/GuidedTour";
 import { onboardingTourSteps } from "../config/tourSteps";
 
@@ -55,28 +56,43 @@ export default function DashboardLayout() {
 
   // Check if onboarding tutorial step is active
   useEffect(() => {
-    const onboardingStep = localStorage.getItem('onboarding_step');
     const tourPending = localStorage.getItem('onboarding_tour_pending') === 'true';
-    if (tourPending && onboardingStep === 'tutorial' && location.pathname === '/app') {
+    if (tourPending && location.pathname === '/app') {
       // Wait for page to render, then show tour
       const timer = setTimeout(() => {
         setTourOpen(true);
-      }, 1000);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [location.pathname]);
 
   const handleTourComplete = () => {
     setTourOpen(false);
-    localStorage.setItem('onboarding_completed', 'true');
-    localStorage.removeItem('onboarding_step');
     localStorage.removeItem('onboarding_tour_pending');
+
+    // Berikan EXP mission karena user menyelesaikan seluruh tour
+    const currentExp = parseInt(localStorage.getItem('user_exp') || '0');
+    const missionExp = 50;
+    localStorage.setItem('user_exp', (currentExp + missionExp).toString());
+
+    // Tandai mission selesai
+    localStorage.setItem('mission_completed', 'true');
+
+    // Notifikasi reward
+    dispatchNotif({
+      type: 'achievement',
+      title: '🎮 Mission Selesai!',
+      message: `Kamu berhasil menyelesaikan Interactive Mission dan mendapat +${missionExp} EXP!`,
+      emoji: '⭐',
+    });
+
+    // Trigger data change agar HomePage refresh EXP/level
+    window.dispatchEvent(new CustomEvent('luminary_data_change'));
   };
 
   const handleTourClose = () => {
+    // User skip tour di tengah jalan — tidak dapat EXP mission
     setTourOpen(false);
-    localStorage.setItem('onboarding_completed', 'true');
-    localStorage.removeItem('onboarding_step');
     localStorage.removeItem('onboarding_tour_pending');
   };
 
@@ -216,6 +232,7 @@ export default function DashboardLayout() {
         <Outlet context={{ openTransactionModal: () => setShowTransactionModal(true) }} />
       </div>
 
+      {/* ── Curved Outside Bottom Navigation ── */}
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center pb-6 px-4">
         <div className="w-full max-w-[360px] h-[70px] backdrop-blur-[16px] px-2 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-[32px] border border-white/10"
@@ -232,20 +249,19 @@ export default function DashboardLayout() {
                     <div className="size-12 rounded-full bg-white/5 blur-md" />
                   </div>
 
-                  {/* Docked Area (Combined Background + Icon for perfect centering) */}
+                  {/* Docked Area */}
                   <div id={`${item.id}-icon`} className="absolute -top-3 size-[44px] flex items-center justify-center">
                     {/* Background Circle */}
                     <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-[#10B981] to-[#059669] shadow-[0_8px_20px_rgba(16,185,129,0.4)] transition-all duration-500 ${active ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}
                       style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-
-                    {/* Active Content Icon (White, Centered) */}
+                    {/* Active Icon */}
                     <div className={`relative z-20 size-10 flex items-center justify-center transition-all duration-500 brightness-100 invert ${active ? 'scale-110 translate-y-0 opacity-100' : 'scale-0 translate-y-8 opacity-0'}`}
                       style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
                       {item.icon(true)}
                     </div>
                   </div>
 
-                  {/* Normal (Inactive) Icon Container */}
+                  {/* Inactive Icon */}
                   <div className={`flex items-center justify-center h-full pb-4 transition-all duration-500 ${active ? 'opacity-0 -translate-y-2' : 'opacity-60 group-hover:opacity-100 group-hover:scale-110 translate-y-0'}`}
                     style={{ filter: "var(--nav-icon-filter, none)" }}>
                     <div className="size-10 flex items-center justify-center">
@@ -253,7 +269,7 @@ export default function DashboardLayout() {
                     </div>
                   </div>
 
-                  {/* Refined Label */}
+                  {/* Label */}
                   <div className="absolute bottom-[10px] w-full flex justify-center">
                     <span className={`text-[8px] font-black font-['Plus_Jakarta_Sans'] tracking-[1.5px] transition-all duration-500 ${active ? 'opacity-0 translate-y-2' : 'opacity-100'}`}
                       style={{ color: "var(--app-text2)" }}>
@@ -292,11 +308,9 @@ export default function DashboardLayout() {
               title={lang === "en" ? "New Transaction" : "Transaksi Baru"}
             >
               <div className={`fab-glow absolute inset-0 rounded-full bg-[#4edea3] blur-xl opacity-20 transition-opacity`} />
-
               <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#003824" strokeWidth={3} className="shrink-0 relative">
                 <path d="M12 4v16m8-8H4" strokeLinecap="round" />
               </svg>
-
               <div className={`relative overflow-hidden transition-all duration-500 ease-in-out whitespace-nowrap ${isExtended ? 'max-w-[100px] opacity-100 ml-2' : 'max-w-0 opacity-0 ml-0'}`}>
                 <span className="font-['Plus_Jakarta_Sans'] font-black text-[#003824] text-[13px] tracking-wide uppercase">
                   {t("transaksi", lang) || (lang === 'en' ? 'TRANSACTION' : 'TRANSAKSI')}

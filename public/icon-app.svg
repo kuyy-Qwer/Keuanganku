@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background dengan sudut tumpul untuk PWA -->
+  <rect width="512" height="512" rx="110" fill="#f8fafc"/>
+  
+  <!-- Glow background -->
+  <circle cx="256" cy="200" r="180" fill="url(#bgGlow)" opacity="0.3"/>
+
+  <!-- Bar Chart Biru 3D (dari logo Canva) -->
+  <g transform="translate(256, 180)">
+    <!-- Bar 1 (pendek) -->
+    <rect x="-60" y="-40" width="30" height="80" rx="4" fill="url(#b1)" transform="skewY(-5)"/>
+    <rect x="-57" y="-37" width="8" height="40" rx="2" fill="white" opacity="0.3" transform="skewY(-5)"/>
+    
+    <!-- Bar 2 (sedang) -->
+    <rect x="-20" y="-60" width="30" height="100" rx="4" fill="url(#b2)" transform="skewY(-5)"/>
+    <rect x="-17" y="-57" width="8" height="50" rx="2" fill="white" opacity="0.3" transform="skewY(-5)"/>
+    
+    <!-- Bar 3 (tinggi) -->
+    <rect x="20" y="-80" width="30" height="120" rx="4" fill="url(#b3)" transform="skewY(-5)"/>
+    <rect x="23" y="-77" width="8" height="60" rx="2" fill="white" opacity="0.3" transform="skewY(-5)"/>
+  </g>
+
+  <!-- Uang Hijau (dari logo Canva) -->
+  <g transform="translate(150, 280)">
+    <!-- Tumpukan uang 3 lembar -->
+    <rect x="0" y="10" width="90" height="50" rx="6" fill="#16a34a" transform="rotate(-8) skew(-1, 0)"/>
+    <rect x="3" y="7" width="90" height="50" rx="6" fill="#22c55e" transform="rotate(-4) skew(-0.5, 0)"/>
+    <rect x="6" y="4" width="90" height="50" rx="6" fill="#4ade80"/>
+    
+    <!-- Detail uang -->
+    <rect x="15" y="18" width="60" height="4" rx="2" fill="#16a34a" opacity="0.6"/>
+    <rect x="15" y="28" width="45" height="4" rx="2" fill="#16a34a" opacity="0.6"/>
+    
+    <!-- Simbol Dollar -->
+    <circle cx="51" cy="35" r="12" fill="#16a34a" opacity="0.8"/>
+    <text x="51" y="40" text-anchor="middle" font-size="14" font-weight="bold" fill="white" font-family="Arial">$</text>
+  </g>
+
+  <!-- Panah Hijau Melengkung (dari logo Canva) -->
+  <path d="M 100 380 Q 256 480 412 380" stroke="#22c55e" stroke-width="20" fill="none" stroke-linecap="round"/>
+  <polygon points="412,365 430,390 395,392" fill="#22c55e"/>
+
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:transparent"/>
+    </radialGradient>
+    
+    <linearGradient id="b1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    
+    <linearGradient id="b2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#93c5fd"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    
+    <linearGradient id="b3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#bfdbfe"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { getUser, saveUser } from "../store/database";
 import { useLang, t } from "../i18n";
 import { getLoginLockoutRemaining, registerFailedLoginAttempt, resetLoginAttempts, validatePinStrength } from "../lib/pinSecurity";
 import { createSession } from "../lib/authGuard";
+import AppLogo from "../components/AppLogo";
 
 type Screen = "pin" | "forgot_verify" | "forgot_newpin" | "forgot_success";
 
@@ -12,6 +13,17 @@ export default function LoginPage() {
   const lang = useLang();
   const L = (id: string, en: string) => lang === "en" ? en : id;
   const digits = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+
+  // Check if user has set a PIN
+  const userPin = getUser().pin;
+  const hasCustomPin = userPin && userPin.trim() !== "" && userPin !== "123456";
+
+  // If no custom PIN, redirect to app
+  useEffect(() => {
+    if (!hasCustomPin) {
+      navigate("/app", { replace: true });
+    }
+  }, [hasCustomPin, navigate]);
 
   // ── PIN login ────────────────────────────────────────────────────
   const [pin, setPin] = useState("");
@@ -27,6 +39,23 @@ export default function LoginPage() {
   const [newPin, setNewPin] = useState("");
   const [newPinConfirm, setNewPinConfirm] = useState("");
   const [newPinError, setNewPinError] = useState("");
+
+  // If no custom PIN set, show loading while redirecting
+  if (!hasCustomPin) {
+    return (
+      <div className="w-full h-screen flex flex-col items-center justify-center px-8 select-none"
+        style={{ backgroundColor: "var(--app-bg)" }}>
+        <div className="flex flex-col items-center gap-4">
+          <AppLogo size={72} variant="dark" />
+          <p className="font-['Plus_Jakarta_Sans'] font-extrabold text-[26px] tracking-[-0.5px]"
+            style={{ color: "var(--app-text)" }}>Keuanganku</p>
+          <p className="font-['Inter'] text-[13px]" style={{ color: "var(--app-text2)" }}>
+            {L("Memuat...", "Loading...")}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ── Handlers: PIN login ──────────────────────────────────────────
   const handleDigit = (d: string) => {
@@ -174,7 +203,7 @@ export default function LoginPage() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="size-4 rounded-full transition-all duration-200"
                   style={{
-                    backgroundColor: i < newPin.length ? "#4edea3" : "#2d3449",
+                    backgroundColor: i < newPin.length ? "var(--app-pin-dot-filled)" : "var(--app-pin-dot-empty)",
                     boxShadow: i < newPin.length ? "0 0 8px rgba(78,222,163,0.5)" : "none",
                     opacity: isConfirmMode ? 0.5 : 1,
                   }} />
@@ -190,7 +219,7 @@ export default function LoginPage() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="size-4 rounded-full transition-all duration-200"
                   style={{
-                    backgroundColor: i < newPinConfirm.length ? (newPinError ? "#ffb4ab" : "#4edea3") : "#2d3449",
+                    backgroundColor: i < newPinConfirm.length ? (newPinError ? "var(--app-danger)" : "var(--app-pin-dot-filled)") : "var(--app-pin-dot-empty)",
                     boxShadow: i < newPinConfirm.length && !newPinError ? "0 0 8px rgba(78,222,163,0.5)" : "none",
                   }} />
               ))}
@@ -199,7 +228,7 @@ export default function LoginPage() {
         </div>
 
         {newPinError
-          ? <p className="font-['Inter'] text-[13px] text-[#ffb4ab] mb-4 text-center">{newPinError}</p>
+          ? <p className="font-['Inter'] text-[13px] mb-4 text-center" style={{ color: "var(--app-danger)" }}>{newPinError}</p>
           : <div className="mb-4 h-5" />}
 
         {/* Keypad */}
@@ -210,9 +239,12 @@ export default function LoginPage() {
               <button key={i}
                 onClick={() => d === "⌫" ? handleNewPinDelete() : handleNewPinDigit(d)}
                 className="h-[64px] rounded-[20px] flex items-center justify-center transition-all active:scale-90"
-                style={{ backgroundColor: d === "⌫" ? "rgba(255,180,171,0.08)" : "#131b2e", border: d === "⌫" ? "1px solid rgba(255,180,171,0.15)" : "1px solid rgba(255,255,255,0.04)" }}>
+                style={{
+                  backgroundColor: d === "⌫" ? "var(--app-danger-bg)" : "var(--app-keypad-bg)",
+                  border: `1px solid ${d === "⌫" ? "var(--app-danger-border)" : "var(--app-keypad-border)"}`,
+                }}>
                 <span className="font-['Plus_Jakarta_Sans'] font-bold text-[22px]"
-                  style={{ color: d === "⌫" ? "#ffb4ab" : "#dae2fd" }}>{d}</span>
+                  style={{ color: d === "⌫" ? "var(--app-danger)" : "var(--app-text)" }}>{d}</span>
               </button>
             );
           })}
@@ -333,11 +365,9 @@ export default function LoginPage() {
       style={{ backgroundColor: "var(--app-bg)" }}>
       {/* Logo */}
       <div className="mb-10 flex flex-col items-center gap-3">
-        <div className="size-16 rounded-[22px] bg-gradient-to-br from-[#4edea3] to-[#04b4a2] flex items-center justify-center shadow-[0_8px_32px_rgba(78,222,163,0.35)]">
-          <span className="text-[32px]">💎</span>
-        </div>
+        <AppLogo size={72} variant="dark" />
         <p className="font-['Plus_Jakarta_Sans'] font-extrabold text-[26px] tracking-[-0.5px]"
-          style={{ color: "var(--app-text)" }}>Luminary</p>
+          style={{ color: "var(--app-text)" }}>Keuanganku</p>
         <p className="font-['Inter'] text-[13px]" style={{ color: "var(--app-text2)" }}>
           {t("loginSubtitle", lang)}
         </p>
@@ -348,14 +378,14 @@ export default function LoginPage() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="size-4 rounded-full transition-all duration-200"
             style={{
-              backgroundColor: i < pin.length ? (error ? "#ffb4ab" : "#4edea3") : "#2d3449",
+              backgroundColor: i < pin.length ? (error ? "var(--app-danger)" : "var(--app-pin-dot-filled)") : "var(--app-pin-dot-empty)",
               boxShadow: i < pin.length && !error ? "0 0 8px rgba(78,222,163,0.5)" : "none",
             }} />
         ))}
       </div>
 
       {error
-        ? <p className="font-['Inter'] text-[13px] text-[#ffb4ab] mb-4">{t("pinWrong", lang)}</p>
+        ? <p className="font-['Inter'] text-[13px] mb-4" style={{ color: "var(--app-danger)" }}>{t("pinWrong", lang)}</p>
         : <div className="mb-4 h-5" />}
 
       {/* Keypad */}
@@ -366,20 +396,23 @@ export default function LoginPage() {
             <button key={i}
               onClick={() => d === "⌫" ? handleDelete() : handleDigit(d)}
               className="h-[64px] rounded-[20px] flex items-center justify-center transition-all active:scale-90"
-              style={{ backgroundColor: d === "⌫" ? "rgba(255,180,171,0.08)" : "#131b2e", border: d === "⌫" ? "1px solid rgba(255,180,171,0.15)" : "1px solid rgba(255,255,255,0.04)" }}>
+              style={{
+                backgroundColor: d === "⌫" ? "var(--app-danger-bg)" : "var(--app-keypad-bg)",
+                border: `1px solid ${d === "⌫" ? "var(--app-danger-border)" : "var(--app-keypad-border)"}`,
+              }}>
               <span className="font-['Plus_Jakarta_Sans'] font-bold text-[22px]"
-                style={{ color: d === "⌫" ? "#ffb4ab" : "#dae2fd" }}>{d}</span>
+                style={{ color: d === "⌫" ? "var(--app-danger)" : "var(--app-text)" }}>{d}</span>
             </button>
           );
         })}
       </div>
 
       <p className="font-['Inter'] text-[11px] mt-10 text-center leading-relaxed" style={{ color: "var(--app-text2)" }}>
-        {L("Gunakan PIN yang Anda buat saat onboarding. Setelah beberapa percobaan salah, login akan dikunci sementara.", "Use the PIN you created during onboarding. After several failed attempts, login is temporarily locked.")}
+        {L("Gunakan PIN yang Anda buat di Settings. Setelah beberapa percobaan salah, login akan dikunci sementara.", "Use the PIN you created in Settings. After several failed attempts, login is temporarily locked.")}
       </p>
 
       {lockMessage ? (
-        <p className="font-['Inter'] text-[12px] mt-3 text-center" style={{ color: error ? "#ffb4ab" : "var(--app-text2)" }}>
+        <p className="font-['Inter'] text-[12px] mt-3 text-center" style={{ color: error ? "var(--app-danger)" : "var(--app-text2)" }}>
           {lockMessage}
         </p>
       ) : null}

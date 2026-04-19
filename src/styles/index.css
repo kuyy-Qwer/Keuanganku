@@ -23,6 +23,15 @@
   --app-text2: #94a3b8;
   --app-border: rgba(255,255,255,0.05);
   --app-nav-bg: rgba(11,19,38,0.95);
+  /* Extra semantic tokens */
+  --app-input-bg: #1a2740;
+  --app-keypad-bg: #131b2e;
+  --app-keypad-border: rgba(255,255,255,0.04);
+  --app-pin-dot-empty: #2d3449;
+  --app-pin-dot-filled: #4edea3;
+  --app-danger: #ffb4ab;
+  --app-danger-bg: rgba(255,180,171,0.08);
+  --app-danger-border: rgba(255,180,171,0.15);
 }
 
 /* Utility classes that use theme vars */
@@ -49,7 +58,6 @@ input:-webkit-autofill:active {
 
 /* ── Light theme overrides untuk elemen hardcoded ── */
 [data-theme="light"] {
-  /* Card backgrounds yang hardcoded */
   --tw-bg-opacity: 1;
 }
 
@@ -68,6 +76,14 @@ input:-webkit-autofill:active {
 /* Hardcoded muted text */
 [data-theme="light"] .text-\[\#64748b\],
 [data-theme="light"] .text-\[\#94a3b8\] { color: #4a7c65 !important; }
+
+/* Hardcoded light text that's invisible on light bg */
+[data-theme="light"] .text-\[\#dae2fd\] { color: #1f2937 !important; }
+[data-theme="light"] .text-\[\#a7f3d0\] { color: #065f46 !important; }
+[data-theme="light"] .text-\[\#e2e8f0\] { color: #374151 !important; }
+[data-theme="light"] .text-\[\#cbd5e1\] { color: #4b5563 !important; }
+[data-theme="light"] .text-\[\#f1f5f9\] { color: #1f2937 !important; }
+[data-theme="light"] .text-\[\#e2e8f0\] { color: #374151 !important; }
 
 /* Borders */
 [data-theme="light"] .border-white\/5,
@@ -115,6 +131,85 @@ input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
   -webkit-text-fill-color: #0d2b1f !important;
 }
+
+/* Dark card backgrounds used in inline styles — light mode override */
+[data-theme="light"] [style*="background: linear-gradient(145deg, #0d2e1e"],
+[data-theme="light"] [style*="background: linear-gradient(145deg, #0f3524"],
+[data-theme="light"] [style*="background-color: #0b1326"],
+[data-theme="light"] [style*="background-color: #131b2e"],
+[data-theme="light"] [style*="background-color: #1a2740"],
+[data-theme="light"] [style*="background-color: #0f1a2e"] {
+  background-color: var(--app-card) !important;
+  background: var(--app-card) !important;
+}
+
+/* Dark text colors used in inline styles that are invisible on light bg */
+[data-theme="light"] [style*="color: #dae2fd"],
+[data-theme="light"] [style*="color: #e2e8f0"],
+[data-theme="light"] [style*="color: #f1f5f9"],
+[data-theme="light"] [style*="color: #cbd5e1"] {
+  color: var(--app-text) !important;
+}
+[data-theme="light"] [style*="color: #94a3b8"],
+[data-theme="light"] [style*="color: #64748b"],
+[data-theme="light"] [style*="color: #475569"] {
+  color: var(--app-text2) !important;
+}
+
+/* colorScheme for date inputs */
+[data-theme="light"] input[type="date"],
+[data-theme="light"] input[type="time"] {
+  color-scheme: light;
+}
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"] {
+  color-scheme: dark;
+}
+
+/* ── Balance card light mode ── */
+[data-theme="light"] .balance-card-themed {
+  background: linear-gradient(135deg, #0d4a2a 0%, #0f5c34 40%, #0d4a2a 100%) !important;
+  box-shadow: 0 12px 40px rgba(78,222,163,0.25), 0 4px 16px rgba(0,0,0,0.15), inset 0 1px 0 rgba(78,222,163,0.2) !important;
+}
+
+/* ── TasksPage & modal inputs — light mode fix ── */
+[data-theme="light"] input[style*="background: #0b1326"],
+[data-theme="light"] input[style*='background: "#0b1326"'],
+[data-theme="light"] textarea[style*="background: #0b1326"],
+[data-theme="light"] input[style*="background:#0b1326"],
+[data-theme="light"] textarea[style*="background:#0b1326"] {
+  background: var(--app-input-bg) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
+}
+
+/* Checklist item backgrounds */
+[data-theme="light"] .bg-\[\#0b1326\] { background-color: var(--app-card2) !important; }
+[data-theme="light"] .bg-\[\#2d3449\] { background-color: var(--app-card2) !important; }
+
+/* Checklist item text */
+[data-theme="light"] .text-white { color: var(--app-text) !important; }
+
+/* Modal close/action buttons with rgba(255,255,255,0.05) bg */
+[data-theme="light"] [style*="background: rgba(255,255,255,0.05)"],
+[data-theme="light"] [style*="background:rgba(255,255,255,0.05)"] {
+  background: var(--app-card2) !important;
+}
+
+/* Modal borders */
+[data-theme="light"] [style*="border-top: 1px solid rgba(255,255,255,0.05)"],
+[data-theme="light"] [style*="borderTop: \"1px solid rgba(255,255,255,0.05)\""] {
+  border-top-color: var(--app-border) !important;
+}
+
+/* Checkbox border in light mode */
+[data-theme="light"] [style*="borderColor: rgba(255,255,255,0.15)"] {
+  border-color: var(--app-border) !important;
+}
+
+/* Move button in task cards */
+[data-theme="light"] [style*="background: #0b1326"][style*="text-[#64748b]"],
+[data-theme="light"] .hover\:bg-\[\#1a253d\]:hover { background-color: var(--app-card2) !important; }
 
 .clickable {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -169,3 +264,52 @@ input:-webkit-autofill:active {
 .animate-fade-out {
   animation: fadeOut 0.35s ease-in forwards;
 }
+
+/* ── Mobile responsiveness ── */
+
+/* Minimum touch target size (44px) for all interactive elements */
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+/* Exception: small inline buttons */
+button.inline-btn { min-height: unset; min-width: unset; }
+
+/* Safe area padding for notched phones */
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
+.safe-top    { padding-top:    max(env(safe-area-inset-top),    0px); }
+
+/* Prevent text overflow on small screens */
+.truncate-mobile {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Smooth momentum scrolling on iOS */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* Prevent layout shift from scrollbar */
+html { scrollbar-gutter: stable; }
+
+/* Better tap highlight */
+* { -webkit-tap-highlight-color: rgba(78, 222, 163, 0.1); }
+
+/* Prevent zoom on input focus (iOS) */
+input, select, textarea {
+  font-size: max(16px, 1em);
+}
+
+/* Fix for very small screens (< 360px) */
+@media (max-width: 360px) {
+  .px-5 { padding-left: 12px !important; padding-right: 12px !important; }
+  .text-\[26px\], .text-\[28px\] { font-size: 22px !important; }
+  .text-\[30px\] { font-size: 24px !important; }
+}
+
+/* Ensure content doesn't go under bottom nav */
+.pb-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }

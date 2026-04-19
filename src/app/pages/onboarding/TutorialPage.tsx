@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { useLang } from '../../i18n';
@@ -47,20 +47,17 @@ export default function TutorialPage() {
   const lang = useLang();
   const L = (id: string, en: string) => lang === 'en' ? en : id;
 
-  // Tombol muncul setelah 5 detik
-  const [buttonsReady, setButtonsReady] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setButtonsReady(true), 5000);
-    return () => clearTimeout(t);
-  }, []);
+  // Tombol langsung tampil tanpa delay
+  const buttonsReady = true;
 
   const finishOnboarding = (startTour: boolean) => {
     const currentExp = parseInt(localStorage.getItem('user_exp') || '0');
     if (startTour) {
-      localStorage.setItem('user_exp', (currentExp + 50).toString());
+      // EXP 50 diberikan nanti saat tour selesai di DashboardLayout
       localStorage.setItem('onboarding_tour_pending', 'true');
       localStorage.setItem('mission_completed', 'true');
     } else {
+      // Tidak ikut tour — dapat EXP kecil
       localStorage.setItem('user_exp', (currentExp + 10).toString());
     }
     localStorage.setItem('onboarding_completed', 'true');
@@ -120,9 +117,9 @@ export default function TutorialPage() {
 
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.3 }}
           className="mb-6 text-center"
         >
           <div
@@ -150,9 +147,9 @@ export default function TutorialPage() {
 
         {/* EXP total badge */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
           className="mb-5 flex items-center justify-center"
         >
           <div
@@ -177,9 +174,9 @@ export default function TutorialPage() {
           {TASKS.map((task, i) => (
             <motion.div
               key={task.id}
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.28 + i * 0.1 }}
+              transition={{ delay: i * 0.06 }}
               className="rounded-[18px] p-4"
               style={{
                 background: 'var(--app-card)',
@@ -245,9 +242,9 @@ export default function TutorialPage() {
           ) : (
             <motion.div
               key="buttons"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.3 }}
               className="rounded-[22px] p-4 space-y-3"
               style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}
             >

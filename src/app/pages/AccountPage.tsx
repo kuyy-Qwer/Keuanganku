@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router";
-import { useState, useEffect } from "react";
-import { getUser, getSettings } from "../store/database";
+import { useState, useEffect, useRef } from "react";
+import { getUser } from "../store/database";
 import { useLang, t } from "../i18n";
+
+const AVATAR_KEY = "luminary_avatar";
 
 function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -37,6 +39,7 @@ function SettingsButton({ icon, label, onClick, divider }: { icon: any, label: s
 export default function AccountPage() {
   const navigate = useNavigate();
   const lang = useLang();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userPhone, setUserPhone] = useState("");
@@ -48,12 +51,30 @@ export default function AccountPage() {
       setUserName(u.fullName);
       setUserEmail(u.email);
       setUserPhone(u.phone);
-      setUserAvatar(localStorage.getItem("luminary_avatar") || "");
+      setUserAvatar(localStorage.getItem(AVATAR_KEY) || "");
     };
     refresh();
     window.addEventListener("luminary_data_change", refresh);
     return () => window.removeEventListener("luminary_data_change", refresh);
   }, []);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setUserAvatar(result);
+      localStorage.setItem(AVATAR_KEY, result);
+      window.dispatchEvent(new CustomEvent("luminary_data_change", { detail: { key: AVATAR_KEY } }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const initials = userName
+    ? userName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "👤";
 
   const L = (val: string, en: string) => lang === "en" ? en : val;
 
@@ -64,21 +85,54 @@ export default function AccountPage() {
         <h1 id="tour-account-header" className="font-['Plus_Jakarta_Sans'] font-extrabold text-[24px] mb-6"
           style={{ color: "var(--app-text)" }}>{t("account", lang)}</h1>
 
-        <div id="tour-account-profile">
-        <SettingsSection title={L("PROFIL", "PROFILE")}>
-          <div className="flex items-center gap-4 p-4">
-            <div className="size-16 rounded-[20px] border border-[#4edea3]/20 flex items-center justify-center overflow-hidden"
-              style={{ backgroundColor: "rgba(78,222,163,0.1)" }}>
-              {userAvatar ? <img src={userAvatar} className="size-full object-cover" /> : <span className="text-[24px]">👤</span>}
+        {/* Profile Card dengan foto yang bisa diklik */}
+        <div id="tour-account-profile" className="mb-8">
+          <SettingsSection title={L("PROFIL", "PROFILE")}>
+            <div className="flex items-center gap-4 p-4">
+              {/* Avatar — klik untuk ganti foto */}
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="relative size-[72px] rounded-[20px] border-2 overflow-hidden flex items-center justify-center transition-all active:scale-95 group"
+                  style={{ backgroundColor: "rgba(78,222,163,0.1)", borderColor: "rgba(78,222,163,0.3)" }}
+                  title={L("Ganti foto profil", "Change profile photo")}
+                >
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="avatar" className="size-full object-cover" />
+                  ) : (
+                    <span className="font-['Plus_Jakarta_Sans'] font-extrabold text-[24px] text-[#4edea3]">
+                      {initials}
+                    </span>
+                  )}
+                  {/* Overlay saat hover */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                    </svg>
+                  </div>
+                </button>
+                {/* Camera badge */}
+                <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-[#4edea3] flex items-center justify-center shadow-md pointer-events-none">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="#003824" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  </svg>
+                </div>
+              </div>
+
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+
+              <div className="flex-1 min-w-0">
+                <p className="font-['Plus_Jakarta_Sans'] font-bold text-[16px] truncate"
+                  style={{ color: "var(--app-text)" }}>{userName || "User"}</p>
+                <p className="font-['Inter'] text-[12px] truncate"
+                  style={{ color: "var(--app-text2)" }}>{userEmail || userPhone || L("Belum diisi", "Not set")}</p>
+                <p className="font-['Inter'] text-[10px] mt-1" style={{ color: "#4edea3" }}>
+                  {L("Tap foto untuk ganti", "Tap photo to change")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-['Plus_Jakarta_Sans'] font-bold text-[16px]"
-                style={{ color: "var(--app-text)" }}>{userName || "User"}</p>
-              <p className="font-['Inter'] text-[12px]"
-                style={{ color: "var(--app-text2)" }}>{userEmail || userPhone || L("Belum diisi", "Not set")}</p>
-            </div>
-          </div>
-        </SettingsSection>
+          </SettingsSection>
         </div>
 
         <SettingsSection title={t("accountSection", lang)}>

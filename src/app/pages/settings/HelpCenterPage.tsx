@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { useState } from "react";
 import { useLang } from "../../i18n";
-
 const WA_NUMBER = "621213923253";
 const WA_MESSAGE = encodeURIComponent(
   "Ada kendala yang ingin saya sampaikan 🙏\n\nHalo Tim Luminary, saya mengalami kesulitan saat menggunakan aplikasi dan membutuhkan bantuan. Mohon kiranya bisa dibantu ya. Terima kasih banyak sebelumnya! 😊"
